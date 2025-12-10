@@ -257,6 +257,22 @@ Este proyecto es privado y confidencial.
 
 Para contribuir al proyecto, por favor contactar al equipo de desarrollo.
 
+## 🚀 Despliegue en VPS
+
+### Easypanel (Recomendado)
+
+Para desplegar en una VPS con Easypanel, consulta la [Guía de Despliegue en Easypanel](DEPLOY_EASYPANEL.md).
+
+### Despliegue Manual
+
+Para desplegar manualmente en una VPS, consulta la [Guía de Despliegue Manual](DEPLOY.md).
+
+### Despliegue Rápido
+
+1. Clona el repositorio en tu VPS
+2. Sigue los pasos detallados según tu método de despliegue
+3. Usa el script `deploy.sh` para actualizaciones futuras (solo despliegue manual)
+
 ## 📞 Soporte
 
 Para soporte técnico, contactar al administrador del sistema.

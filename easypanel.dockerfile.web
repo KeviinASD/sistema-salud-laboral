@@ -1,0 +1,36 @@
+# Dockerfile para Frontend (Web) - Easypanel
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copiar archivos de dependencias
+COPY package*.json ./
+COPY web/package*.json ./web/
+
+# Instalar dependencias
+RUN npm install
+RUN cd web && npm install
+
+# Copiar código fuente
+COPY web ./web
+
+# Construir aplicación
+RUN cd web && npm run build
+
+# Imagen de producción
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Instalar serve para servir archivos estáticos
+RUN npm install -g serve
+
+# Copiar build desde builder
+COPY --from=builder /app/web/dist ./dist
+
+# Exponer puerto
+EXPOSE 3000
+
+# Comando de inicio
+CMD ["serve", "-s", "dist", "-l", "3000"]
+
