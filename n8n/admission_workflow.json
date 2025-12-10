@@ -1,0 +1,175 @@
+{
+  "name": "Proceso de Admisión Completo",
+  "nodes": [
+    {
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "position": [300, 200],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "admission-webhook",
+        "responseMode": "responseNode"
+      }
+    },
+    {
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.function",
+      "position": [500, 200],
+      "parameters": {
+        "functionCode": "const data = $input.first().json;\n\n// Validaciones según Ley 29783\nif (!data.dni || data.dni.length !== 8) {\n  throw new Error('DNI inválido. Debe tener 8 dígitos');\n}\n\nif (!data.tipo_examen || !['ingreso', 'periodico', 'retiro'].includes(data.tipo_examen)) {\n  throw new Error('Tipo de examen no válido');\n}\n\n// Validar fecha futura\nconst fechaProgramada = new Date(data.fecha_programada);\nconst hoy = new Date();\nif (fechaProgramada <= hoy) {\n  throw new Error('La fecha debe ser futura');\n}\n\nreturn data;"
+      }
+    },
+    {
+      "name": "Check Existing Patient",
+      "type": "n8n-nodes-base.postgres",
+      "position": [700, 200],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT p.id, u.nombres, u.apellidos, u.email FROM pacientes p JOIN usuarios u ON p.usuario_id = u.id WHERE u.dni = $1",
+        "additionalFields": {
+          "queryParams": {
+            "parameter": "dni",
+            "value": "={{$json.dni}}"
+          }
+        }
+      }
+    },
+    {
+      "name": "Create New Patient",
+      "type": "n8n-nodes-base.if",
+      "position": [900, 100],
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$('Check Existing Patient').item.json.length}}",
+              "operation": "equals",
+              "value2": "0"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Insert User",
+      "type": "n8n-nodes-base.postgres",
+      "position": [1100, 100],
+      "parameters": {
+        "operation": "insert",
+        "table": "usuarios",
+        "columns": "dni,email,nombres,apellidos,telefono,rol",
+        "values": "={{[$json.dni, $json.email, $json.nombres, $json.apellidos, $json.telefono, 'patient']}}"
+      }
+    },
+    {
+      "name": "Insert Patient",
+      "type": "n8n-nodes-base.postgres",
+      "position": [1300, 100],
+      "parameters": {
+        "operation": "insert",
+        "table": "pacientes",
+        "columns": "usuario_id,empresa_id",
+        "values": "={{[ $('Insert User').item.json.id, $json.empresa_id ]}}"
+      }
+    },
+    {
+      "name": "Get Patient ID",
+      "type": "n8n-nodes-base.set",
+      "position": [1100, 300],
+      "parameters": {
+        "assignments": {
+          "assigned": [
+            {
+              "id": "patient_id",
+              "value": "={{$('Check Existing Patient').item.json[0].id}}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create Admission",
+      "type": "n8n-nodes-base.postgres",
+      "position": [1500, 200],
+      "parameters": {
+        "operation": "insert",
+        "table": "admisiones",
+        "columns": "paciente_id,empresa_id,tipo_examen,estado,fecha_programada,created_by",
+        "values": "={{[ $json.patient_id, $json.empresa_id, $json.tipo_examen, 'programado', $json.fecha_programada, $json.created_by ]}}"
+      }
+    },
+    {
+      "name": "Create Preliminary Invoice",
+      "type": "n8n-nodes-base.postgres",
+      "position": [1700, 200],
+      "parameters": {
+        "operation": "insert",
+        "table": "facturas",
+        "columns": "admision_id,tipo_comprobante,estado,subtotal,igv,total",
+        "values": "={{[ $('Create Admission').item.json.id, '03', 'pendiente', $json.subtotal, $json.igv, $json.total ]}}"
+      }
+    },
+    {
+      "name": "Send Confirmation Email",
+      "type": "n8n-nodes-base.emailSend",
+      "position": [1900, 200],
+      "parameters": {
+        "fromEmail": "clinica@saludlaboral.pe",
+        "toEmail": "={{$json.email}}",
+        "subject": "Confirmación de Cita - Salud Laboral",
+        "text": "Estimado(a) {{$json.nombres}} {{$json.apellidos}},\\n\\nSu cita para evaluación ocupacional ha sido programada para el {{$json.fecha_programada}}.\\nTipo de examen: {{$json.tipo_examen}}\\n\\nPor favor, presente su DNI y llegue 15 minutos antes.\\n\\nClínica de Salud Ocupacional"
+      }
+    },
+    {
+      "name": "Return Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [2100, 200],
+      "parameters": {
+        "responseBody": {
+          "success": true,
+          "message": "Admisión creada exitosamente",
+          "admission_id": "={{$('Create Admission').item.json.id}}",
+          "invoice_id": "={{$('Create Preliminary Invoice').item.json.id}}"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{ "node": "Validate Input", "type": "main", "index": 0 }]]
+    },
+    "Validate Input": {
+      "main": [[{ "node": "Check Existing Patient", "type": "main", "index": 0 }]]
+    },
+    "Check Existing Patient": {
+      "main": [
+        [{ "node": "Create New Patient", "type": "main", "index": 0 }],
+        [{ "node": "Get Patient ID", "type": "main", "index": 0 }]
+      ]
+    },
+    "Create New Patient": {
+      "main": [
+        [{ "node": "Insert User", "type": "if", "index": 0 }],
+        [{ "node": "Get Patient ID", "type": "main", "index": 0 }]
+      ]
+    },
+    "Insert User": {
+      "main": [[{ "node": "Insert Patient", "type": "main", "index": 0 }]]
+    },
+    "Insert Patient": {
+      "main": [[{ "node": "Get Patient ID", "type": "main", "index": 0 }]]
+    },
+    "Get Patient ID": {
+      "main": [[{ "node": "Create Admission", "type": "main", "index": 0 }]]
+    },
+    "Create Admission": {
+      "main": [[{ "node": "Create Preliminary Invoice", "type": "main", "index": 0 }]]
+    },
+    "Create Preliminary Invoice": {
+      "main": [[{ "node": "Send Confirmation Email", "type": "main", "index": 0 }]]
+    },
+    "Send Confirmation Email": {
+      "main": [[{ "node": "Return Success", "type": "main", "index": 0 }]]
+    }
+  }
+}

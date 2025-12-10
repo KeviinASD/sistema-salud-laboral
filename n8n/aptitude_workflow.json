@@ -1,0 +1,193 @@
+{
+  "name": "Generación de Informe de Aptitud",
+  "nodes": [
+    {
+      "name": "Trigger on Concept Finalized",
+      "type": "n8n-nodes-base.webhook",
+      "position": [300, 200],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "concept-finalized",
+        "responseMode": "lastNode"
+      }
+    },
+    {
+      "name": "Get Complete Data",
+      "type": "n8n-nodes-base.postgres",
+      "position": [500, 200],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT ca.*, a.paciente_id, u.nombres, u.apellidos, u.email, e.razon_social, d.nombres as medico_nombres, d.apellidos as medico_apellidos, d.colegiatura FROM conceptos_aptitud ca JOIN admisiones a ON ca.admision_id = a.id JOIN pacientes p ON a.paciente_id = p.id JOIN usuarios u ON p.usuario_id = u.id LEFT JOIN empresas e ON p.empresa_id = e.id JOIN usuarios d ON ca.created_by = d.id WHERE ca.id = $1",
+        "additionalFields": {
+          "queryParams": {
+            "parameter": "concept_id",
+            "value": "={{$json.concept_id}}"
+          }
+        }
+      }
+    },
+    {
+      "name": "Generate PDF Template",
+      "type": "n8n-nodes-base.function",
+      "position": [700, 200],
+      "parameters": {
+        "functionCode": "const data = $input.first().json;\nconst pdfTemplate = `\n<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <title>Concepto de Aptitud - ${data.id}</title>\n    <style>\n        body { font-family: Arial, sans-serif; margin: 40px; }\n        .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 20px; }\n        .content { margin-top: 30px; }\n        .signature { margin-top: 100px; text-align: center; }\n        .legal { font-size: 10px; margin-top: 50px; }\n    </style>\n</head>\n<body>\n    <div class=\"header\">\n        <h2>CONCEPTO DE APTITUD OCUPACIONAL</h2>\n        <h3>Ley N° 29783 - Seguridad y Salud en el Trabajo</h3>\n    </div>\n    \n    <div class=\"content\">\n        <p><strong>Paciente:</strong> ${data.nombres} ${data.apellidos}</p>\n        <p><strong>Empresa:</strong> ${data.razon_social || 'No especificada'}</p>\n        <p><strong>Resultado:</strong> ${data.resultado.toUpperCase()}</p>\n        <p><strong>Restricciones:</strong> ${data.restricciones || 'Ninguna'}</p>\n        <p><strong>Recomendaciones:</strong> ${data.recomendaciones || 'Ninguna'}</p>\n        <p><strong>Fecha de Emisión:</strong> ${new Date().toLocaleDateString('es-PE')}</p>\n        <p><strong>Válido hasta:</strong> ${data.fecha_vigencia || 'No aplica'}</p>\n    </div>\n    \n    <div class=\"signature\">\n        <p>___________________________________</p>\n        <p>${data.medico_nombres} ${data.medico_apellidos}</p>\n        <p>Colegiatura: ${data.colegiatura}</p>\n        <p>Médico Ocupacional</p>\n    </div>\n    \n    <div class=\"legal\">\n        <p>Documento emitido electrónicamente según Ley N° 29783 y su reglamento</p>\n        <p>Hash de verificación: ${data.hash_verificacion}</p>\n    </div>\n</body>\n</html>`;\n\nreturn { html: pdfTemplate, data: data };"
+      }
+    },
+    {
+      "name": "Convert to PDF",
+      "type": "n8n-nodes-base.pdf",
+      "position": [900, 200],
+      "parameters": {
+        "operation": "fromHtml",
+        "html": "={{$json.html}}",
+        "options": {
+          "format": "A4",
+          "printBackground": true,
+          "margin": {
+            "top": "20px",
+            "right": "20px",
+            "bottom": "20px",
+            "left": "20px"
+          }
+        }
+      }
+    },
+    {
+      "name": "Store PDF in Database",
+      "type": "n8n-nodes-base.postgres",
+      "position": [1100, 200],
+      "parameters": {
+        "operation": "update",
+        "table": "conceptos_aptitud",
+        "updateKey": "id",
+        "columns": {
+          "pdf_generado": "={{$binary.data}}",
+          "hash_verificacion": "={{$('Generate Hash').item.json.hash}}"
+        }
+      }
+    },
+    {
+      "name": "Generate Hash",
+      "type": "n8n-nodes-base.function",
+      "position": [700, 400],
+      "parameters": {
+        "functionCode": "const crypto = require('crypto');\nconst data = $input.first().json;\nconst hash = crypto.createHash('sha256').update(JSON.stringify(data)).digest('hex');\nreturn { hash };"
+      }
+    },
+    {
+      "name": "Send to Patient",
+      "type": "n8n-nodes-base.emailSend",
+      "position": [1300, 150],
+      "parameters": {
+        "fromEmail": "resultados@saludlaboral.pe",
+        "toEmail": "={{$json.data.email}}",
+        "subject": "Resultado de Evaluación Ocupacional",
+        "text": "Estimado(a) {{$json.data.nombres}},\\n\\nSu concepto de aptitud ocupacional está disponible.\\nResultado: {{$json.data.resultado}}\\n\\nPuede descargar el informe completo desde nuestro portal o contactarnos para una copia física.\\n\\nSaludos,\\nClínica de Salud Ocupacional",
+        "attachments": {
+          "attachments": [
+            {
+              "name": "concepto_aptitud_{{=$json.data.id}}.pdf",
+              "content": "={{$binary.data}}",
+              "type": "application/pdf"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Send to Company",
+      "type": "n8n-nodes-base.if",
+      "position": [1300, 350],
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.data.razon_social}}",
+              "operation": "notEquals",
+              "value2": ""
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Company Email",
+      "type": "n8n-nodes-base.emailSend",
+      "position": [1500, 350],
+      "parameters": {
+        "fromEmail": "empresas@saludlaboral.pe",
+        "toEmail": "empresa_contacto@example.com",
+        "subject": "Concepto de Aptitud - {{$json.data.nombres}} {{$json.data.apellidos}}",
+        "text": "Se ha emitido el concepto de aptitud para el trabajador {{$json.data.nombres}} {{$json.data.apellidos}}.\\nResultado: {{$json.data.resultado}}\\n\\nDocumento adjunto para sus registros.",
+        "attachments": {
+          "attachments": [
+            {
+              "name": "concepto_{{=$json.data.dni}}.pdf",
+              "content": "={{$binary.data}}",
+              "type": "application/pdf"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Send SMS Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1500, 150],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.sms-provider.com/send",
+        "authentication": "genericCredentialType",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "to",
+              "value": "={{$json.data.telefono}}"
+            },
+            {
+              "name": "message",
+              "value": "Clínica Salud: Su resultado de evaluación está listo. Revise su email."
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Trigger on Concept Finalized": {
+      "main": [[{ "node": "Get Complete Data", "type": "main", "index": 0 }]]
+    },
+    "Get Complete Data": {
+      "main": [
+        [{ "node": "Generate PDF Template", "type": "main", "index": 0 }],
+        [{ "node": "Generate Hash", "type": "main", "index": 0 }]
+      ]
+    },
+    "Generate PDF Template": {
+      "main": [[{ "node": "Convert to PDF", "type": "main", "index": 0 }]]
+    },
+    "Convert to PDF": {
+      "main": [
+        [{ "node": "Store PDF in Database", "type": "main", "index": 0 }],
+        [{ "node": "Send to Patient", "type": "main", "index": 0 }],
+        [{ "node": "Send to Company", "type": "main", "index": 0 }]
+      ]
+    },
+    "Store PDF in Database": {
+      "main": []
+    },
+    "Generate Hash": {
+      "main": [[{ "node": "Store PDF in Database", "type": "main", "index": 0 }]]
+    },
+    "Send to Patient": {
+      "main": [[{ "node": "Send SMS Notification", "type": "main", "index": 0 }]]
+    },
+    "Send to Company": {
+      "main": [
+        [{ "node": "Company Email", "type": "if", "index": 0 }]
+      ]
+    }
+  }
+}

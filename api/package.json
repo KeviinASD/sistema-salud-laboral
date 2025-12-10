@@ -1,0 +1,44 @@
+{
+  "name": "api",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "prisma:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "seed": "tsx prisma/seed.ts",
+    "seed:full": "tsx prisma/seed-full.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.18.0",
+    "@prisma/engines": "^5.22.0",
+    "@supabase/supabase-js": "^2.78.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^7.0.11",
+    "pdfkit": "^0.15.2",
+    "readable-stream": "^2.3.8",
+    "salud-laboral-sistema": "file:..",
+    "stripe": "^14.21.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.0.0",
+    "@types/nodemailer": "^7.0.4",
+    "@types/pdfkit": "^0.13.0",
+    "prisma": "^5.18.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.2"
+  }
+}

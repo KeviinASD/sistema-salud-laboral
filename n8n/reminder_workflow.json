@@ -1,0 +1,89 @@
+{
+  "name": "Recordatorio de Citas - 24 horas antes",
+  "nodes": [
+    {
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [300, 200],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Tomorrow Appointments",
+      "type": "n8n-nodes-base.postgres",
+      "position": [500, 200],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT a.*, u.nombres, u.apellidos, u.email, u.telefono, e.razon_social, m.nombres as medico_nombres, m.apellidos as medico_apellidos FROM admisiones a JOIN pacientes p ON a.paciente_id = p.id JOIN usuarios u ON p.usuario_id = u.id LEFT JOIN empresas e ON p.empresa_id = e.id LEFT JOIN usuarios m ON a.medico_id = m.id WHERE a.estado IN ('programado', 'confirmado') AND DATE(a.fecha_programada) = CURRENT_DATE + INTERVAL '1 day'",
+        "options": {}
+      }
+    },
+    {
+      "name": "Split Appointments",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [700, 200],
+      "parameters": {
+        "batchSize": 10
+      }
+    },
+    {
+      "name": "Send Reminder Email",
+      "type": "n8n-nodes-base.emailSend",
+      "position": [900, 150],
+      "parameters": {
+        "fromEmail": "recordatorios@saludlaboral.pe",
+        "toEmail": "={{$json.email}}",
+        "subject": "Recordatorio: Cita mañana - Salud Laboral",
+        "html": "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;'><div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;'><h1 style='color: white; margin: 0;'>Recordatorio de Cita</h1></div><div style='background: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);'><h2 style='color: #333; margin-top: 0;'>Hola {{$json.nombres}},</h2><p>Le recordamos que tiene una cita programada para mañana:</p><div style='background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;'><h3 style='margin-top: 0; color: #667eea;'>Detalles de la Cita</h3><table style='width: 100%;'><tr><td style='padding: 8px 0; width: 120px; font-weight: bold;'>Fecha y Hora:</td><td style='padding: 8px 0;'>{{$json.fecha_programada}}</td></tr><tr><td style='padding: 8px 0; font-weight: bold;'>Tipo de Examen:</td><td style='padding: 8px 0;'>{{$json.tipo_examen}}</td></tr><tr><td style='padding: 8px 0; font-weight: bold;'>Médico:</td><td style='padding: 8px 0;'>{{$json.medico_nombres}} {{$json.medico_apellidos}}</td></tr></table></div><div style='background: #e8f5e8; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4caf50;'><h4 style='margin-top: 0; color: #2e7d32;'>Importante</h4><ul style='margin-bottom: 0;'><li>Presentarse 15 minutos antes de la hora programada</li><li>Traer DNI original</li><li>Traer exámenes pre-ingreso si los tiene</li></ul></div><p style='text-align: center; margin-top: 30px;'><a href='https://saludlaboral.pe/mis-citas' style='display: inline-block; background: #667eea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;'>Ver mis citas</a></p></div></body></html>"
+      }
+    },
+    {
+      "name": "Send Reminder SMS",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [900, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.sms-provider.com/send",
+        "authentication": "genericCredentialType",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "to",
+              "value": "={{$json.telefono}}"
+            },
+            {
+              "name": "message",
+              "value": "Recordatorio: Tiene cita mañana {{$json.fecha_programada}} para evaluación ocupacional. Presentarse 15 min antes con DNI."
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [[{ "node": "Get Tomorrow Appointments", "type": "main", "index": 0 }]]
+    },
+    "Get Tomorrow Appointments": {
+      "main": [[{ "node": "Split Appointments", "type": "main", "index": 0 }]]
+    },
+    "Split Appointments": {
+      "main": [
+        [
+          { "node": "Send Reminder Email", "type": "main", "index": 0 },
+          { "node": "Send Reminder SMS", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  }
+}
+

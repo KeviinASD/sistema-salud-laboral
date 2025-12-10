@@ -1,0 +1,683 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Tabla de usuarios del sistema (incluye todos los roles)
+model Usuario {
+  id              String    @id @default(uuid())
+  dni             String    @unique @db.VarChar(8)
+  email           String    @unique @db.VarChar(255)
+  password_hash   String    @db.VarChar(255)
+  nombres         String    @db.VarChar(100)
+  apellidos       String    @db.VarChar(100)
+  telefono        String?   @db.VarChar(15)
+  rol             String    @db.VarChar(50) // 'admin', 'admissions', 'doctor', 'lab', 'patient'
+  especialidad   String?   @db.VarChar(100)
+  colegiatura     String?   @db.VarChar(20)
+  fecha_creacion  DateTime  @default(now())
+  activo          Boolean   @default(true)
+  huella_dactilar Bytes?    // Almacenamiento seguro de template biométrico
+  
+  // Relaciones
+  paciente        Paciente?
+  admisiones_medico Admision[] @relation("MedicoAdmisiones")
+  admisiones_creadas Admision[] @relation("CreadorAdmisiones")
+  historia_clinica_actualizada HistoriaClinica[] @relation("HistoriaClinicaUpdatedBy")
+  examenes_laboratorio ExamenLaboratorio[]
+  conceptos_aptitud ConceptoAptitud[]
+  facturas_creadas Factura[] @relation("FacturasCreadas")
+  movimientos_inventario MovimientoInventario[]
+  logs_auditoria  LogAuditoria[]
+  plantillas_creadas PlantillaDocumento[]
+  integraciones_creadas IntegracionExterna[]
+  config_turnos   ConfigTurnos[]
+  notas_evolucion NotasEvolucion[]
+  adjuntos_historia_clinica AdjuntosHistoriaClinica[]
+  examenes_especializados ExamenesEspecializados[]
+  seguimiento_logistico SeguimientoLogistico[]
+  
+  @@index([dni])
+  @@index([rol])
+  @@map("usuarios")
+}
+
+// Tabla de empresas/clientes
+model Empresa {
+  id              String    @id @default(uuid())
+  ruc             String    @unique @db.VarChar(11)
+  razon_social    String    @db.VarChar(255)
+  nombre_comercial String?  @db.VarChar(255)
+  direccion       String?
+  telefono        String?   @db.VarChar(15)
+  contacto_nombre String?   @db.VarChar(100)
+  contacto_email  String?   @db.VarChar(255)
+  activo          Boolean   @default(true)
+  fecha_registro  DateTime  @default(now())
+  
+  // Relaciones
+  pacientes      Paciente[]
+  admisiones     Admision[]
+  antecedentes_laborales AntecedentesLaborales[]
+  
+  @@map("empresas")
+}
+
+// Tabla de pacientes/trabajadores
+model Paciente {
+  id                    String    @id @default(uuid())
+  usuario_id            String?   @unique
+  usuario               Usuario?  @relation(fields: [usuario_id], references: [id])
+  empresa_id            String?
+  empresa               Empresa?  @relation(fields: [empresa_id], references: [id])
+  tipo_sangre           String?   @db.VarChar(3)
+  alergias              String?
+  medicamentos_actuales String?
+  antecedentes_familiares String?
+  antecedentes_laborales_json Json?     // JSON con historial de puestos y riesgos
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+  
+  // Relaciones
+  admisiones            Admision[]
+  antecedentes_laborales AntecedentesLaborales[]
+  
+  @@index([usuario_id])
+  @@index([empresa_id])
+  @@map("pacientes")
+}
+
+// Tabla de admisiones (citas/consultas)
+model Admision {
+  id                  String    @id @default(uuid())
+  paciente_id         String
+  paciente            Paciente  @relation(fields: [paciente_id], references: [id])
+  empresa_id         String?
+  empresa             Empresa?  @relation(fields: [empresa_id], references: [id])
+  tipo_examen         String    @db.VarChar(50) // 'ingreso', 'periodico', 'retiro', 'reintegro'
+  estado              String    @default("programado") @db.VarChar(20) // 'programado', 'confirmado', 'en_proceso', 'completado', 'cancelado'
+  fecha_programada    DateTime
+  fecha_atencion      DateTime?
+  medico_id           String?
+  medico              Usuario?  @relation("MedicoAdmisiones", fields: [medico_id], references: [id])
+  motivo_consulta     String?
+  observaciones_admision String?
+  created_at          DateTime  @default(now())
+  created_by          String?
+  creador             Usuario?  @relation("CreadorAdmisiones", fields: [created_by], references: [id])
+  
+  // Relaciones
+  historia_clinica    HistoriaClinica?
+  examenes_laboratorio ExamenLaboratorio[]
+  concepto_aptitud    ConceptoAptitud?
+  factura             Factura?
+  documentos          DocumentoAdmision[]
+  examenes_especializados ExamenesEspecializados[]
+  seguimiento_logistico SeguimientoLogistico[]
+  
+  @@index([paciente_id])
+  @@index([fecha_programada])
+  @@index([estado])
+  @@map("admisiones")
+}
+
+// Tabla de historia clínica (una por admisión)
+model HistoriaClinica {
+  id              String    @id @default(uuid())
+  admision_id     String    @unique
+  admision        Admision  @relation(fields: [admision_id], references: [id])
+  anamnesis       String?
+  examen_fisico   Json?     // JSON estructurado: { presion_arterial: "120/80", peso: 70, ... }
+  diagnostico    String?
+  tratamiento     String?
+  notas_evolucion String[]
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  updated_by      String?
+  actualizado_por Usuario?  @relation("HistoriaClinicaUpdatedBy", fields: [updated_by], references: [id])
+  
+  // Relaciones
+  notas           NotasEvolucion[]
+  adjuntos        AdjuntosHistoriaClinica[]
+  
+  @@map("historia_clinica")
+}
+
+// Tabla de exámenes de laboratorio
+model ExamenLaboratorio {
+  id              String    @id @default(uuid())
+  admision_id     String
+  admision        Admision  @relation(fields: [admision_id], references: [id])
+  tipo_examen     String    @db.VarChar(100) // 'hematologia', 'orina', 'audiometria', etc.
+  parametros      Json      // JSON con valores normales y resultados
+  resultado_final String?
+  archivo_resultado Bytes?  // PDF/Imagen del resultado
+  estado          String    @default("pendiente") @db.VarChar(20) // 'pendiente', 'procesando', 'completado', 'anulado'
+  fecha_muestra   DateTime?
+  fecha_resultado DateTime?
+  tecnico_id      String?
+  tecnico         Usuario?  @relation(fields: [tecnico_id], references: [id])
+  created_at      DateTime  @default(now())
+  
+  @@index([admision_id])
+  @@index([tipo_examen])
+  @@map("examenes_laboratorio")
+}
+
+// Tabla de conceptos de aptitud
+model ConceptoAptitud {
+  id                String    @id @default(uuid())
+  admision_id       String    @unique
+  admision          Admision  @relation(fields: [admision_id], references: [id])
+  resultado         String    @db.VarChar(20) // 'apto', 'no_apto', 'apto_con_restricciones'
+  restricciones     String?
+  recomendaciones   String?
+  fecha_vigencia     DateTime? @db.Date
+  firma_digital      Bytes?
+  pdf_generado       Bytes?
+  hash_verificacion  String?   @db.VarChar(64) // SHA256 para integridad del documento
+  created_at        DateTime  @default(now())
+  created_by        String?
+  creador           Usuario?  @relation(fields: [created_by], references: [id])
+  
+  @@map("conceptos_aptitud")
+}
+
+// Tabla de facturación
+model Factura {
+  id                  String    @id @default(uuid())
+  admision_id         String?   @unique
+  admision            Admision? @relation(fields: [admision_id], references: [id])
+  numero_serie        String?   @db.VarChar(4)
+  numero_correlativo   Int?
+  tipo_comprobante     String?   @db.VarChar(2) // '01': Factura, '03': Boleta
+  estado               String    @default("pendiente") @db.VarChar(20) // 'pendiente', 'pagado', 'anulado'
+  subtotal             Decimal?  @db.Decimal(10, 2)
+  igv                  Decimal?  @db.Decimal(10, 2)
+  total                Decimal?  @db.Decimal(10, 2)
+  fecha_emision        DateTime? @default(now()) @db.Date
+  fecha_vencimiento    DateTime? @db.Date
+  metodo_pago          String?   @db.VarChar(50)
+  transaccion_id       String?   @db.VarChar(100)
+  xml_sunat            Bytes?
+  cdr_sunat            Bytes?
+  creado_por           String?
+  creador               Usuario? @relation("FacturasCreadas", fields: [creado_por], references: [id])
+  created_at           DateTime  @default(now())
+  
+  @@index([admision_id])
+  @@map("facturas")
+}
+
+// Tabla de inventario
+model Inventario {
+  id              String    @id @default(uuid())
+  codigo          String    @unique @db.VarChar(50)
+  nombre          String    @db.VarChar(200)
+  categoria       String    @db.VarChar(100)
+  stock_actual    Int       @default(0)
+  stock_minimo    Int       @default(5)
+  unidad_medida   String?   @db.VarChar(20)
+  precio_unitario Decimal?  @db.Decimal(10, 2)
+  proveedor       String?   @db.VarChar(200)
+  ubicacion       String?   @db.VarChar(100)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  
+  // Relaciones
+  movimientos     MovimientoInventario[]
+  
+  @@map("inventario")
+}
+
+// Tabla de movimientos de inventario
+model MovimientoInventario {
+  id              String    @id @default(uuid())
+  item_id         String
+  item            Inventario @relation(fields: [item_id], references: [id])
+  tipo_movimiento String    @db.VarChar(10) // 'entrada', 'salida'
+  cantidad        Int
+  motivo          String?
+  referencia      String?   @db.VarChar(100) // N° de admisión o factura
+  usuario_id      String?
+  usuario         Usuario?  @relation(fields: [usuario_id], references: [id])
+  created_at      DateTime  @default(now())
+  
+  @@map("movimientos_inventario")
+}
+
+// Tabla para documentos de admisión
+model DocumentoAdmision {
+  id              String    @id @default(uuid())
+  admision_id     String
+  admision        Admision  @relation(fields: [admision_id], references: [id], onDelete: Cascade)
+  tipo            String    @db.VarChar(50) // 'dni_front', 'dni_back', 'contrato', 'examen_preingreso', 'radiografia', 'otros'
+  nombre_archivo  String    @db.VarChar(255)
+  mime_type       String?   @db.VarChar(100)
+  tamano          Int?      @map("tamaño")
+  contenido       Bytes
+  hash_sha256     String?   @db.VarChar(64)
+  subido_por      String?
+  created_at      DateTime  @default(now())
+  
+  @@index([admision_id])
+  @@index([tipo])
+  @@map("documentos_admision")
+}
+
+// Tabla para configuración de la clínica
+model ConfigClinica {
+  id              String    @id @default(uuid())
+  nombre          String    @db.VarChar(255)
+  ruc             String    @db.VarChar(11)
+  direccion       String?
+  telefono        String?   @db.VarChar(15)
+  email           String?   @db.VarChar(255)
+  logo            Bytes?
+  logo_mime_type  String?   @db.VarChar(50)
+  sunat_usuario   String?   @db.VarChar(100)
+  sunat_password  String?   @db.VarChar(500) // Encriptado
+  sunat_ambiente   String    @default("beta") @db.VarChar(10) // 'beta', 'produccion'
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  
+  @@map("config_clinica")
+}
+
+// Tabla para plantillas de documentos
+model PlantillaDocumento {
+  id              String    @id @default(uuid())
+  nombre          String    @db.VarChar(100)
+  tipo            String    @db.VarChar(50) // 'concepto_aptitud', 'consentimiento', 'historia_clinica', 'factura'
+  contenido_html  String    @db.Text
+  variables       Json      // JSON con variables disponibles: {{paciente_nombre}}, {{fecha}}, etc.
+  activa          Boolean   @default(true)
+  creado_por       String?
+  creador          Usuario?  @relation(fields: [creado_por], references: [id])
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  
+  @@map("plantillas_documentos")
+}
+
+// Tabla para integraciones externas
+model IntegracionExterna {
+  id              String    @id @default(uuid())
+  nombre          String    @db.VarChar(100)
+  tipo            String    @db.VarChar(50) // 'pago', 'dni', 'biometrico', 'sms', 'email'
+  config          Json      // Configuración específica de cada integración
+  activa          Boolean   @default(false)
+  creado_por       String?
+  creador          Usuario?  @relation(fields: [creado_por], references: [id])
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  
+  @@map("integraciones_externas")
+}
+
+// Tabla para logs de auditoría
+model LogAuditoria {
+  id              String    @id @default(uuid())
+  usuario_id      String?
+  usuario         Usuario?  @relation(fields: [usuario_id], references: [id])
+  accion          String    @db.VarChar(100)
+  modulo          String    @db.VarChar(50)
+  detalles        Json?
+  ip_address      String?   @db.Inet
+  user_agent      String?   @db.Text
+  created_at      DateTime  @default(now())
+  
+  @@index([usuario_id])
+  @@index([modulo])
+  @@index([created_at])
+  @@map("logs_auditoria")
+}
+
+// Tabla para configuración de turnos
+model ConfigTurnos {
+  id              String    @id @default(uuid())
+  medico_id       String?
+  medico          Usuario?  @relation(fields: [medico_id], references: [id])
+  dia_semana      Int       // 0-6 (Domingo-Sábado)
+  hora_inicio     String    @db.VarChar(8) // HH:MM:SS
+  hora_fin        String    @db.VarChar(8) // HH:MM:SS
+  duracion_cita   Int       @default(30)
+  max_citas_dia   Int       @default(20)
+  activo          Boolean   @default(true)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  
+  @@index([medico_id])
+  @@index([dia_semana])
+  @@map("config_turnos")
+}
+
+// Tabla para feriados y días no laborables
+model DiasNoLaborables {
+  id              String    @id @default(uuid())
+  fecha           DateTime  @db.Date
+  motivo          String    @db.VarChar(255)
+  created_at      DateTime  @default(now())
+  
+  @@unique([fecha])
+  @@map("dias_no_laborables")
+}
+
+// Tabla para tipos de examen
+model TiposExamen {
+  id                  String    @id @default(uuid())
+  codigo              String    @unique @db.VarChar(20)
+  nombre              String    @db.VarChar(100)
+  descripcion         String?
+  duracion_minutos    Int       @default(30)
+  requiere_laboratorio Boolean  @default(false)
+  requiere_radiografia Boolean  @default(false)
+  precio_base         Decimal?  @db.Decimal(10, 2)
+  activo              Boolean   @default(true)
+  created_at          DateTime  @default(now())
+  
+  @@index([activo])
+  @@map("tipos_examen")
+}
+
+// Tabla de notas de evolución
+model NotasEvolucion {
+  id                  String    @id @default(uuid())
+  historia_clinica_id String
+  historia_clinica    HistoriaClinica @relation(fields: [historia_clinica_id], references: [id], onDelete: Cascade)
+  fecha               DateTime  @default(now())
+  tipo                String    @db.VarChar(50) // 'evolucion', 'interconsulta', 'epicrisis'
+  contenido           String    @db.Text
+  usuario_id          String?
+  usuario             Usuario?  @relation(fields: [usuario_id], references: [id])
+  created_at          DateTime  @default(now())
+  
+  @@index([historia_clinica_id])
+  @@index([fecha])
+  @@map("notas_evolucion")
+}
+
+// Tabla de antecedentes laborales
+model AntecedentesLaborales {
+  id                  String    @id @default(uuid())
+  paciente_id         String
+  paciente            Paciente  @relation(fields: [paciente_id], references: [id], onDelete: Cascade)
+  empresa_id          String?
+  empresa             Empresa?  @relation(fields: [empresa_id], references: [id])
+  puesto_trabajo      String    @db.VarChar(200)
+  area_trabajo        String?   @db.VarChar(200)
+  fecha_inicio        DateTime  @db.Date
+  fecha_fin           DateTime? @db.Date
+  riesgos_fisicos     Json?
+  riesgos_quimicos    Json?
+  riesgos_biologicos  Json?
+  riesgos_ergonomicos Json?
+  riesgos_psicosociales Json?
+  epp_utilizado       Json?
+  accidentes_laborales Json[]
+  enfermedades_laborales Json[]
+  observaciones       String?
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+  
+  @@index([paciente_id])
+  @@index([empresa_id])
+  @@map("antecedentes_laborales")
+}
+
+// Tabla de exámenes especializados
+model ExamenesEspecializados {
+  id                  String    @id @default(uuid())
+  admision_id         String?
+  admision            Admision? @relation(fields: [admision_id], references: [id])
+  tipo                String    @db.VarChar(100)
+  resultado           Json
+  archivo_resultado   Bytes?
+  realizado_por       String?
+  realizadoPor        Usuario?  @relation(fields: [realizado_por], references: [id])
+  fecha_realizacion   DateTime  @default(now())
+  created_at          DateTime  @default(now())
+  
+  @@index([admision_id])
+  @@index([tipo])
+  @@map("examenes_especializados")
+}
+
+// Tabla de adjuntos de historia clínica
+model AdjuntosHistoriaClinica {
+  id                  String    @id @default(uuid())
+  historia_clinica_id String
+  historia_clinica    HistoriaClinica @relation(fields: [historia_clinica_id], references: [id], onDelete: Cascade)
+  tipo                String    @db.VarChar(50)
+  nombre_archivo      String    @db.VarChar(255)
+  mime_type           String?   @db.VarChar(100)
+  tamano              Int?      @map("tamaño")
+  contenido           Bytes
+  hash_sha256         String?   @db.VarChar(64)
+  subido_por          String?
+  subidoPor           Usuario?  @relation(fields: [subido_por], references: [id])
+  created_at          DateTime  @default(now())
+  
+  @@index([historia_clinica_id])
+  @@map("adjuntos_historia_clinica")
+}
+
+// Tabla de seguimiento logístico
+model SeguimientoLogistico {
+  id                  String    @id @default(uuid())
+  admision_id         String?
+  admision            Admision? @relation(fields: [admision_id], references: [id])
+  estado              String    @db.VarChar(50)
+  ubicacion           String?   @db.VarChar(200)
+  mensaje             String?
+  usuario_id          String?
+  usuario             Usuario?  @relation(fields: [usuario_id], references: [id])
+  created_at          DateTime  @default(now())
+  
+  @@index([admision_id])
+  @@index([estado])
+  @@map("seguimiento_logistico")
+}
+
+// Tablas adicionales para compatibilidad con código existente
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String
+  phone     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Company {
+  id         String    @id @default(uuid())
+  name       String
+  ruc        String    @unique
+  department String?
+  contactName  String?
+  contactEmail String?
+  phone        String?
+  address      String?
+  createdAt  DateTime  @default(now())
+  patients   Patient[]
+}
+
+model Patient {
+  id               String        @id @default(uuid())
+  dni              String        @unique
+  firstName        String
+  lastName         String
+  birthDate        DateTime
+  gender           String
+  phone            String?
+  email            String?
+  address          String?
+  emergencyContact String?
+  bloodType        String?
+  allergies        String?
+  company          Company?      @relation(fields: [companyId], references: [id])
+  companyId        String?
+  appointments     Appointment[]
+  records          MedicalRecord[]
+  labResults       LabResult[]
+  invoices         Invoice[]
+  logisticEvents   LogisticEvent[]
+  concepts         AptitudeConcept[]
+  createdAt        DateTime      @default(now())
+}
+
+model Appointment {
+  id        String   @id @default(uuid())
+  patient   Patient  @relation(fields: [patientId], references: [id])
+  patientId String
+  date      DateTime
+  status    String
+  examType  String?
+  createdAt DateTime @default(now())
+  logisticEvents LogisticEvent[]
+  concepts       AptitudeConcept[]
+}
+
+model MedicalRecord {
+  id        String   @id @default(uuid())
+  patient   Patient  @relation(fields: [patientId], references: [id])
+  patientId String
+  diagnosis String
+  aptitude  String
+  notes     String?
+  examData  String?
+  createdAt DateTime @default(now())
+}
+
+model LabResult {
+  id        String   @id @default(uuid())
+  patient   Patient  @relation(fields: [patientId], references: [id])
+  patientId String
+  testName  String
+  sampleId  String
+  fileUrl   String?
+  result    String?
+  createdAt DateTime @default(now())
+}
+
+model Invoice {
+  id          String   @id @default(uuid())
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  patientId   String
+  number      String   @unique
+  amount      Float
+  igv         Float
+  status      String
+  sunatCdrUrl String?
+  series      String?
+  correlativo Int?
+  type        String? // '01' Factura, '03' Boleta
+  xmlSunat    String?
+  cdrSunat    String?
+  createdAt   DateTime @default(now())
+}
+
+model Setting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model Template {
+  id           String   @id @default(uuid())
+  name         String
+  type         String
+  html         String
+  variables    String   // JSON string of variables
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+model Integration {
+  id        String   @id @default(uuid())
+  name      String
+  type      String
+  config    String   // JSON string
+  active    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  module    String
+  details   String?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+}
+
+model InventoryItem {
+  id        String   @id @default(uuid())
+  name      String
+  sku       String   @unique
+  unit      String?
+  stock     Int      @default(0)
+  minStock  Int      @default(0)
+  updatedAt DateTime @updatedAt
+  movements InventoryMovement[]
+}
+
+model InventoryMovement {
+  id        String         @id @default(uuid())
+  item      InventoryItem  @relation(fields: [itemId], references: [id])
+  itemId    String
+  type      String
+  quantity  Int
+  note      String?
+  createdAt DateTime       @default(now())
+}
+
+model LogisticEvent {
+  id           String   @id @default(uuid())
+  patient      Patient  @relation(fields: [patientId], references: [id])
+  patientId    String
+  appointment  Appointment? @relation(fields: [appointmentId], references: [id])
+  appointmentId String?
+  status       String
+  message      String?
+  createdAt    DateTime @default(now())
+}
+
+model ClinicConfig {
+  id             String   @id @default(uuid())
+  name           String
+  ruc            String
+  address        String?
+  phone          String?
+  email          String?
+  logoUrl        String?
+  sunatUsuario   String?
+  sunatPassword  String?
+  sunatAmbiente  String   @default("beta")
+  updatedAt      DateTime @updatedAt
+}
+
+model AptitudeConcept {
+  id            String      @id @default(uuid())
+  patient       Patient     @relation(fields: [patientId], references: [id])
+  patientId     String
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+  appointmentId String?
+  resultado     String
+  restricciones String?
+  recomendaciones String?
+  fechaVigencia DateTime?
+  pdfUrl        String?
+  hash          String?
+  createdBy     String?
+  createdAt     DateTime    @default(now())
+}

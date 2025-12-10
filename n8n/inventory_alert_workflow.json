@@ -1,0 +1,106 @@
+{
+  "name": "Alertas de Inventario Bajo",
+  "nodes": [
+    {
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [300, 200],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Low Stock Items",
+      "type": "n8n-nodes-base.postgres",
+      "position": [500, 200],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM inventario WHERE stock_actual <= stock_minimo AND stock_actual > 0 ORDER BY stock_actual ASC",
+        "options": {}
+      }
+    },
+    {
+      "name": "Check if Empty",
+      "type": "n8n-nodes-base.if",
+      "position": [700, 200],
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.length}}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Format Alert Message",
+      "type": "n8n-nodes-base.function",
+      "position": [900, 200],
+      "parameters": {
+        "functionCode": "const items = $input.all();\nconst message = `ALERTA DE INVENTARIO BAJO\\n\\nSe encontraron ${items.length} item(s) con stock bajo:\\n\\n` + items.map(item => `- ${item.json.nombre} (${item.json.codigo}): ${item.json.stock_actual} ${item.json.unidad_medida || 'unidades'} (Mínimo: ${item.json.stock_minimo})\\n`).join('') + `\\nPor favor, realizar pedido de reposición.`;\nreturn { message, items: items.map(i => i.json) };"
+      }
+    },
+    {
+      "name": "Send Email Alert",
+      "type": "n8n-nodes-base.emailSend",
+      "position": [1100, 200],
+      "parameters": {
+        "fromEmail": "inventario@saludlaboral.pe",
+        "toEmail": "admin@saludlaboral.pe",
+        "subject": "🚨 Alerta: Stock Bajo en Inventario",
+        "text": "={{$json.message}}"
+      }
+    },
+    {
+      "name": "Send SMS Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [1100, 350],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.sms-provider.com/send",
+        "authentication": "genericCredentialType",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "to",
+              "value": "+51987654321"
+            },
+            {
+              "name": "message",
+              "value": "={{$json.message}}"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [[{ "node": "Get Low Stock Items", "type": "main", "index": 0 }]]
+    },
+    "Get Low Stock Items": {
+      "main": [[{ "node": "Check if Empty", "type": "main", "index": 0 }]]
+    },
+    "Check if Empty": {
+      "main": [[{ "node": "Format Alert Message", "type": "if", "index": 0 }]]
+    },
+    "Format Alert Message": {
+      "main": [
+        [{ "node": "Send Email Alert", "type": "main", "index": 0 }],
+        [{ "node": "Send SMS Alert", "type": "main", "index": 0 }]
+      ]
+    }
+  }
+}
+

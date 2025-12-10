@@ -1,0 +1,94 @@
+{
+  "name": "Proceso de Admisión Completo - Mejorado",
+  "nodes": [
+    {
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "position": [300, 200],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "admission-webhook",
+        "responseMode": "responseNode"
+      }
+    },
+    {
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.function",
+      "position": [500, 200],
+      "parameters": {
+        "functionCode": "const data = $input.first().json;\n\n// Validaciones según Ley 29783\nif (!data.paciente_dni && !data.dni) {\n  throw new Error('DNI no proporcionado');\n}\n\nconst dni = data.paciente_dni || data.dni;\nif (dni.length !== 8) {\n  throw new Error('DNI inválido. Debe tener 8 dígitos');\n}\n\nif (!data.tipo_examen) {\n  throw new Error('Tipo de examen no válido');\n}\n\n// Validar fecha futura\nconst fechaProgramada = new Date(data.fecha_programada);\nconst hoy = new Date();\nif (fechaProgramada <= hoy) {\n  throw new Error('La fecha debe ser futura');\n}\n\nreturn data;"
+      }
+    },
+    {
+      "name": "Get Patient and Admission Details",
+      "type": "n8n-nodes-base.postgres",
+      "position": [700, 200],
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  p.id as paciente_id,\n  u.dni,\n  u.nombres,\n  u.apellidos,\n  u.email,\n  u.telefono,\n  e.razon_social as empresa_nombre,\n  e.ruc as empresa_ruc,\n  e.direccion as empresa_direccion,\n  a.id as admission_id,\n  a.tipo_examen,\n  a.fecha_programada,\n  a.estado as admission_estado,\n  a.motivo_consulta,\n  a.observaciones_admision,\n  te.nombre as tipo_examen_nombre,\n  te.descripcion as tipo_examen_descripcion,\n  te.duracion_minutos,\n  te.precio_base,\n  m.nombres as medico_nombres,\n  m.apellidos as medico_apellidos,\n  m.email as medico_email,\n  m.especialidad as medico_especialidad,\n  f.id as factura_id,\n  f.subtotal,\n  f.igv,\n  f.total as factura_total,\n  f.tipo_comprobante,\n  f.metodo_pago\nFROM pacientes p\nJOIN usuarios u ON p.usuario_id = u.id\nLEFT JOIN empresas e ON p.empresa_id = e.id\nLEFT JOIN admisiones a ON a.paciente_id = p.id AND a.id = $1\nLEFT JOIN tipos_examen te ON te.codigo = a.tipo_examen\nLEFT JOIN usuarios m ON a.medico_id = m.id\nLEFT JOIN facturas f ON f.admision_id = a.id\nWHERE u.dni = $2\nORDER BY a.fecha_programada DESC\nLIMIT 1;",
+        "additionalFields": {
+          "queryParams": [
+            {
+              "parameter": "admission_id",
+              "value": "={{$json.admission_id}}"
+            },
+            {
+              "parameter": "dni",
+              "value": "={{$json.paciente_dni || $json.dni}}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Format Email Data",
+      "type": "n8n-nodes-base.function",
+      "position": [900, 200],
+      "parameters": {
+        "functionCode": "const webhookData = $('Webhook Trigger').first().json;\nconst dbData = $input.first().json;\n\n// Combinar datos del webhook con datos de la BD\nconst emailData = {\n  // Datos del paciente\n  paciente_nombre: dbData.nombres + ' ' + dbData.apellidos,\n  paciente_dni: dbData.dni,\n  paciente_email: dbData.email,\n  paciente_telefono: dbData.telefono || 'No proporcionado',\n  \n  // Datos de la empresa\n  empresa_nombre: dbData.empresa_nombre || webhookData.empresa_razon_social || 'No especificada',\n  empresa_ruc: dbData.empresa_ruc || webhookData.empresa_ruc || '',\n  empresa_direccion: dbData.empresa_direccion || '',\n  \n  // Datos de la admisión\n  admission_id: dbData.admission_id || webhookData.admission_id,\n  tipo_examen_codigo: dbData.tipo_examen || webhookData.tipo_examen,\n  tipo_examen_nombre: dbData.tipo_examen_nombre || 'Examen Médico Ocupacional',\n  tipo_examen_descripcion: dbData.tipo_examen_descripcion || '',\n  duracion_minutos: dbData.duracion_minutos || 30,\n  fecha_programada: new Date(dbData.fecha_programada || webhookData.fecha_programada).toLocaleString('es-PE', {\n    weekday: 'long',\n    year: 'numeric',\n    month: 'long',\n    day: 'numeric',\n    hour: '2-digit',\n    minute: '2-digit'\n  }),\n  fecha_programada_raw: dbData.fecha_programada || webhookData.fecha_programada,\n  hora_cita: new Date(dbData.fecha_programada || webhookData.fecha_programada).toLocaleTimeString('es-PE', {\n    hour: '2-digit',\n    minute: '2-digit'\n  }),\n  fecha_cita: new Date(dbData.fecha_programada || webhookData.fecha_programada).toLocaleDateString('es-PE', {\n    weekday: 'long',\n    year: 'numeric',\n    month: 'long',\n    day: 'numeric'\n  }),\n  motivo_consulta: dbData.motivo_consulta || webhookData.motivo_consulta || 'No especificado',\n  observaciones: dbData.observaciones_admision || webhookData.observaciones_admision || '',\n  \n  // Datos del médico\n  medico_nombre: dbData.medico_nombres && dbData.medico_apellidos \n    ? dbData.medico_nombres + ' ' + dbData.medico_apellidos\n    : webhookData.medico_nombre || 'Por asignar',\n  medico_email: dbData.medico_email || webhookData.medico_email || '',\n  medico_especialidad: dbData.medico_especialidad || 'Medicina Ocupacional',\n  \n  // Datos de facturación\n  factura_id: dbData.factura_id || webhookData.factura_id || '',\n  subtotal: dbData.subtotal || webhookData.subtotal || 0,\n  igv: dbData.igv || webhookData.igv || 0,\n  total: dbData.factura_total || webhookData.total || 0,\n  tipo_comprobante: dbData.tipo_comprobante || webhookData.tipo_comprobante || '03',\n  metodo_pago: dbData.metodo_pago || webhookData.metodo_pago || 'No especificado',\n  precio_examen: dbData.precio_base || 0\n};\n\nreturn emailData;"
+      }
+    },
+    {
+      "name": "Send Confirmation Email",
+      "type": "n8n-nodes-base.emailSend",
+      "position": [1100, 200],
+      "parameters": {
+        "fromEmail": "clinica@saludlaboral.pe",
+        "toEmail": "={{$json.paciente_email}}",
+        "subject": "Confirmación de Cita - {{$json.tipo_examen_nombre}}",
+        "html": "<!DOCTYPE html>\n<html>\n<head>\n  <meta charset='UTF-8'>\n  <style>\n    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }\n    .container { max-width: 600px; margin: 0 auto; padding: 20px; }\n    .header { background-color: #4CAF50; color: white; padding: 20px; text-align: center; }\n    .content { background-color: #f9f9f9; padding: 20px; margin-top: 20px; }\n    .info-box { background-color: white; padding: 15px; margin: 10px 0; border-left: 4px solid #4CAF50; }\n    .footer { text-align: center; margin-top: 20px; color: #666; font-size: 12px; }\n    .highlight { color: #4CAF50; font-weight: bold; }\n  </style>\n</head>\n<body>\n  <div class='container'>\n    <div class='header'>\n      <h1>Confirmación de Cita</h1>\n      <p>Clínica de Salud Ocupacional</p>\n    </div>\n    \n    <div class='content'>\n      <p>Estimado(a) <span class='highlight'>{{$json.paciente_nombre}}</span>,</p>\n      \n      <p>Su cita para evaluación ocupacional ha sido programada exitosamente:</p>\n      \n      <div class='info-box'>\n        <h3>📅 Información de la Cita</h3>\n        <p><strong>Fecha:</strong> {{$json.fecha_cita}}</p>\n        <p><strong>Hora:</strong> <span class='highlight'>{{$json.hora_cita}}</span></p>\n        <p><strong>Tipo de Examen:</strong> {{$json.tipo_examen_nombre}}</p>\n        <p><strong>Duración estimada:</strong> {{$json.duracion_minutos}} minutos</p>\n      </div>\n      \n      <div class='info-box'>\n        <h3>👨‍⚕️ Información del Médico</h3>\n        <p><strong>Médico asignado:</strong> {{$json.medico_nombre}}</p>\n        <p><strong>Especialidad:</strong> {{$json.medico_especialidad}}</p>\n      </div>\n      \n      <div class='info-box'>\n        <h3>🏢 Información de la Empresa</h3>\n        <p><strong>Empresa:</strong> {{$json.empresa_nombre}}</p>\n        <p><strong>RUC:</strong> {{$json.empresa_ruc}}</p>\n      </div>\n      \n      {{#if $json.total}}\n      <div class='info-box'>\n        <h3>💰 Información de Facturación</h3>\n        <p><strong>Subtotal:</strong> S/ {{$json.subtotal}}</p>\n        <p><strong>IGV:</strong> S/ {{$json.igv}}</p>\n        <p><strong>Total:</strong> <span class='highlight'>S/ {{$json.total}}</span></p>\n        <p><strong>Método de pago:</strong> {{$json.metodo_pago}}</p>\n      </div>\n      {{/if}}\n      \n      <div class='info-box'>\n        <h3>📋 Instrucciones</h3>\n        <ul>\n          <li>Por favor, presente su <strong>DNI</strong> al llegar</li>\n          <li>Llegue <strong>15 minutos antes</strong> de su cita</li>\n          <li>Traiga cualquier documentación médica relevante</li>\n          <li>Si necesita reprogramar, contáctenos con al menos 24 horas de anticipación</li>\n        </ul>\n      </div>\n      \n      {{#if $json.motivo_consulta}}\n      <div class='info-box'>\n        <h3>📝 Motivo de Consulta</h3>\n        <p>{{$json.motivo_consulta}}</p>\n      </div>\n      {{/if}}\n      \n      <p>Si tiene alguna pregunta, no dude en contactarnos.</p>\n      \n      <p>Saludos cordiales,<br>\n      <strong>Equipo de Salud Ocupacional</strong></p>\n    </div>\n    \n    <div class='footer'>\n      <p>Este es un correo automático, por favor no responda a este mensaje.</p>\n      <p>ID de Admisión: {{$json.admission_id}}</p>\n    </div>\n  </div>\n</body>\n</html>",
+        "text": "Estimado(a) {{$json.paciente_nombre}},\n\nSu cita para evaluación ocupacional ha sido programada exitosamente:\n\n📅 INFORMACIÓN DE LA CITA\nFecha: {{$json.fecha_cita}}\nHora: {{$json.hora_cita}}\nTipo de Examen: {{$json.tipo_examen_nombre}}\nDuración estimada: {{$json.duracion_minutos}} minutos\n\n👨‍⚕️ INFORMACIÓN DEL MÉDICO\nMédico asignado: {{$json.medico_nombre}}\nEspecialidad: {{$json.medico_especialidad}}\n\n🏢 INFORMACIÓN DE LA EMPRESA\nEmpresa: {{$json.empresa_nombre}}\nRUC: {{$json.empresa_ruc}}\n\n{{#if $json.total}}💰 INFORMACIÓN DE FACTURACIÓN\nSubtotal: S/ {{$json.subtotal}}\nIGV: S/ {{$json.igv}}\nTotal: S/ {{$json.total}}\nMétodo de pago: {{$json.metodo_pago}}\n{{/if}}\n\n📋 INSTRUCCIONES\n- Presente su DNI al llegar\n- Llegue 15 minutos antes de su cita\n- Traiga cualquier documentación médica relevante\n- Si necesita reprogramar, contáctenos con al menos 24 horas de anticipación\n\n{{#if $json.motivo_consulta}}📝 MOTIVO DE CONSULTA\n{{$json.motivo_consulta}}\n{{/if}}\n\nSaludos cordiales,\nEquipo de Salud Ocupacional\n\nID de Admisión: {{$json.admission_id}}"
+      }
+    },
+    {
+      "name": "Return Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [1300, 200],
+      "parameters": {
+        "responseBody": {
+          "success": true,
+          "message": "Email de confirmación enviado exitosamente",
+          "admission_id": "={{$('Format Email Data').item.json.admission_id}}"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{ "node": "Validate Input", "type": "main", "index": 0 }]]
+    },
+    "Validate Input": {
+      "main": [[{ "node": "Get Patient and Admission Details", "type": "main", "index": 0 }]]
+    },
+    "Get Patient and Admission Details": {
+      "main": [[{ "node": "Format Email Data", "type": "main", "index": 0 }]]
+    },
+    "Format Email Data": {
+      "main": [[{ "node": "Send Confirmation Email", "type": "main", "index: 0 }]]
+    },
+    "Send Confirmation Email": {
+      "main": [[{ "node": "Return Success", "type": "main", "index": 0 }]]
+    }
+  }
+}
+

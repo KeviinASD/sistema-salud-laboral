@@ -1,0 +1,21 @@
+{
+  "name": "salud-laboral-sistema",
+  "private": true,
+  "workspaces": [
+    "api",
+    "web"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n API,WEB -c yellow,cyan \"npm --prefix api run dev\" \"npm --prefix web run dev\"",
+    "build": "npm --prefix api run build && npm --prefix web run build",
+    "prisma:generate": "npm --prefix api run prisma:generate",
+    "db:push": "npm --prefix api run db:push",
+    "seed": "npm --prefix api run seed"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
