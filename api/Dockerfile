@@ -1,4 +1,4 @@
-# ===== Etapa 1: Build =====
+# ---------- Etapa 1: Build ----------
 FROM node:20-alpine AS builder
 
 RUN apk add --no-cache openssl
@@ -6,13 +6,13 @@ RUN apk add --no-cache openssl
 WORKDIR /app
 
 # Copiar dependencias
-COPY package*.json ./
-COPY prisma ./prisma/
+COPY api/package*.json ./
+COPY api/prisma ./prisma/
 
 RUN npm ci
 
-# Copiar código fuente
-COPY . .
+# Copiar el código fuente
+COPY api ./
 
 # Generar Prisma Client
 RUN npx prisma generate
@@ -20,18 +20,18 @@ RUN npx prisma generate
 # Compilar TypeScript
 RUN npm run build
 
-# ===== Etapa 2: Production =====
+# ---------- Etapa 2: Production ----------
 FROM node:20-alpine
 
 RUN apk add --no-cache openssl
 
 WORKDIR /app
 
-# Copiar dependencias de producción
-COPY package*.json ./
+COPY api/package*.json ./
+
 RUN npm ci --only=production && npm cache clean --force
 
-# Copiar build y prisma
+# Copiar build
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
