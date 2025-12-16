@@ -6,15 +6,15 @@ RUN apk add --no-cache openssl
 
 WORKDIR /app
 
-# Copiar archivos de dependencias (desde la raíz del contexto que es api/)
-COPY package*.json ./
-COPY prisma ./prisma/
+# Copiar archivos de dependencias desde api/
+COPY api/package*.json ./
+COPY api/prisma ./prisma/
 
 # Instalar todas las dependencias (incluyendo devDependencies)
 RUN npm ci
 
-# Copiar el código fuente completo
-COPY . .
+# Copiar el código fuente completo desde api/
+COPY api/ ./
 
 # Generar Prisma Client
 RUN npx prisma generate
@@ -31,7 +31,7 @@ RUN apk add --no-cache openssl
 WORKDIR /app
 
 # Copiar package.json y package-lock.json
-COPY package*.json ./
+COPY api/package*.json ./
 
 # Instalar solo dependencias de producción
 RUN npm ci --only=production && npm cache clean --force
