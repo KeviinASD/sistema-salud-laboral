@@ -4,6 +4,17 @@ import { useTranslation } from "react-i18next";
 import { api } from "../api";
 import AppLayout from "../components/Layout/AppLayout";
 import { useToast } from "../contexts/ToastContext";
+import { 
+  FileText, 
+  Upload, 
+  TestTube, 
+  List, 
+  Calendar,
+  User,
+  Activity,
+  Download,
+  RefreshCw
+} from "lucide-react";
 
 export default function Medical() {
   const navigate = useNavigate();
@@ -197,55 +208,91 @@ export default function Medical() {
   };
 
   const tabs = [
-    { id: "informacion", label: "Información" },
-    { id: "documentos", label: "Documentos" },
-    { id: "laboratorio", label: "Laboratorio" },
-    { id: "lista", label: "Lista" }
+    { id: "informacion", label: "Información", icon: FileText },
+    { id: "documentos", label: "Documentos", icon: Upload },
+    { id: "laboratorio", label: "Laboratorio", icon: TestTube },
+    { id: "lista", label: "Lista", icon: List }
   ];
 
   return (
     <AppLayout>
       <div className="py-4 sm:py-6">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8">
-          <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-6">{t("medical.title")}</h2>
-          
-          {/* Pestañas */}
-          <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
-            <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-              {tabs.map((tab) => (
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
+          {/* Header Mejorado */}
+          <div className="mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+                  {t("medical.title")}
+                </h1>
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                  Gestión de historias clínicas y resultados de laboratorio
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
                 <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`
-                    whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
-                    ${
-                      activeTab === tab.id
-                        ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
-                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
-                    }
-                  `}
+                  onClick={loadData}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                 >
-                  {tab.label}
+                  <RefreshCw className="h-4 w-4" />
+                  Actualizar
                 </button>
-              ))}
-            </nav>
+              </div>
+            </div>
+          </div>
+          
+          {/* Pestañas Modernas */}
+          <div className="mb-6">
+            <div className="bg-gray-100 dark:bg-gray-800 p-1 rounded-lg inline-flex gap-1">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`
+                      inline-flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-all
+                      ${
+                        activeTab === tab.id
+                          ? "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm"
+                          : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                      }
+                    `}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Contenido de las pestañas */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md">
+          <div className="space-y-6">
             {/* Pestaña: Información */}
             {activeTab === "informacion" && (
-              <div className="p-4 sm:p-6">
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-700 dark:text-white mb-4">
-                  {t("medical.createRecord")}
-                </h3>
-                <form onSubmit={submit} className="grid grid-cols-1 gap-4 max-w-2xl">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+                <div className="p-5 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                      <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      {t("medical.createRecord")}
+                    </h3>
+                  </div>
+                </div>
+                <div className="p-6">
+                  <form onSubmit={submit} className="grid grid-cols-1 gap-5 max-w-3xl">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {t("medical.selectPatient")} *
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                      <span className="flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        {t("medical.selectPatient")} *
+                      </span>
                     </label>
                     <select
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      className="mt-1 block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
                       value={form.patientId}
                       onChange={(e) => setForm({ ...form, patientId: e.target.value })}
                       required
@@ -261,26 +308,42 @@ export default function Medical() {
                   
                   {appointments.length > 0 && (
                     <>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+                        <label className="flex items-center gap-2 text-sm font-semibold text-blue-900 dark:text-blue-300 mb-3">
+                          <Calendar className="h-4 w-4" />
                           Admisiones del Paciente:
                         </label>
-                        <ul className="max-h-32 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-md p-2 bg-gray-50 dark:bg-gray-900">
+                        <ul className="max-h-32 overflow-y-auto space-y-2">
                           {appointments.map((a) => (
-                            <li key={a.id} className="text-sm text-gray-700 dark:text-gray-300 py-1">
-                              {new Date(a.fecha_programada || a.date || Date.now()).toLocaleString("es-PE")} — 
-                              {a.tipo_examen || a.examType || "Examen"} — 
-                              {a.estado || a.status || "N/A"}
+                            <li key={a.id} className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-blue-200 dark:border-blue-700">
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                    {a.tipo_examen || a.examType || "Examen"}
+                                  </p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    {new Date(a.fecha_programada || a.date || Date.now()).toLocaleString("es-PE")}
+                                  </p>
+                                </div>
+                                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                                  a.estado === "completado" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" :
+                                  a.estado === "en_proceso" ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" :
+                                  "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                                }`}>
+                                  {a.estado || a.status || "N/A"}
+                                </span>
+                              </div>
                             </li>
                           ))}
                         </ul>
                       </div>
                       {appointments[0]?.motivo_consulta && (
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Motivo de Consulta (de la admisión):
+                        <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-4">
+                          <label className="flex items-center gap-2 text-sm font-semibold text-purple-900 dark:text-purple-300 mb-2">
+                            <Activity className="h-4 w-4" />
+                            Motivo de Consulta:
                           </label>
-                          <div className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-300 sm:text-sm">
+                          <div className="text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 rounded-lg p-3 border border-purple-200 dark:border-purple-700">
                             {appointments[0].motivo_consulta || "No especificado"}
                           </div>
                         </div>
@@ -289,11 +352,11 @@ export default function Medical() {
                   )}
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                       {t("medical.diagnosis")} *
                     </label>
                     <input
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      className="mt-1 block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
                       placeholder={t("medical.diagnosis")}
                       value={form.diagnosis}
                       onChange={(e) => setForm({ ...form, diagnosis: e.target.value })}
@@ -302,11 +365,11 @@ export default function Medical() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                       Concepto de Aptitud
                     </label>
                     <select
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      className="mt-1 block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
                       value={form.aptitude}
                       onChange={(e) => setForm({ ...form, aptitude: e.target.value })}
                     >
@@ -316,11 +379,11 @@ export default function Medical() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                       {t("medical.notes")}
                     </label>
                     <textarea
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      className="mt-1 block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
                       placeholder={t("medical.notes")}
                       value={form.notes}
                       onChange={(e) => setForm({ ...form, notes: e.target.value })}
@@ -329,28 +392,41 @@ export default function Medical() {
                   </div>
 
                   <button
-                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-700 dark:bg-blue-600 hover:bg-blue-800 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    className="w-full flex justify-center items-center gap-2 py-4 px-6 border border-transparent rounded-xl shadow-lg text-base font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:scale-[1.02]"
                     type="submit"
                   >
+                    <FileText className="h-5 w-5" />
                     {t("medical.createRecord")}
                   </button>
                 </form>
+                </div>
               </div>
             )}
 
             {/* Pestaña: Documentos */}
             {activeTab === "documentos" && (
-              <div className="p-4 sm:p-6">
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-700 dark:text-white mb-4">
-                  Subir Documento a Laboratorio
-                </h3>
-                <form onSubmit={uploadLab} className="grid grid-cols-1 gap-4 max-w-2xl">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+                <div className="p-5 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                      <Upload className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      Subir Documento a Laboratorio
+                    </h3>
+                  </div>
+                </div>
+                <div className="p-6">
+                  <form onSubmit={uploadLab} className="grid grid-cols-1 gap-5 max-w-3xl">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Seleccionar Paciente *
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                      <span className="flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        Seleccionar Paciente *
+                      </span>
                     </label>
                     <select
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      className="mt-1 block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl shadow-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition duration-200"
                       value={labForm.patientId}
                       onChange={(e) => setLabForm({ ...labForm, patientId: e.target.value })}
                       required
@@ -365,79 +441,120 @@ export default function Medical() {
                   </div>
 
                   {labAppointments.length > 0 && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-xl p-4">
+                      <label className="flex items-center gap-2 text-sm font-semibold text-indigo-900 dark:text-indigo-300 mb-3">
+                        <Calendar className="h-4 w-4" />
                         Admisiones del Paciente:
                       </label>
-                      <ul className="max-h-32 overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-md p-2 bg-gray-50 dark:bg-gray-900">
+                      <ul className="max-h-32 overflow-y-auto space-y-2">
                         {labAppointments.map((a) => (
-                          <li key={a.id} className="text-sm text-gray-700 dark:text-gray-300 py-1">
-                            {new Date(a.fecha_programada || a.date || Date.now()).toLocaleString("es-PE")} — 
-                            {a.tipo_examen || a.examType || "Examen"} — 
-                            {a.estado || a.status || "N/A"}
+                          <li key={a.id} className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-indigo-200 dark:border-indigo-700">
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                  {a.tipo_examen || a.examType || "Examen"}
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                  {new Date(a.fecha_programada || a.date || Date.now()).toLocaleString("es-PE")}
+                                </p>
+                              </div>
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                                a.estado === "completado" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" :
+                                a.estado === "en_proceso" ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200" :
+                                "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                              }`}>
+                                {a.estado || a.status || "N/A"}
+                              </span>
+                            </div>
                           </li>
                         ))}
                       </ul>
                     </div>
                   )}
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <div className="bg-gray-50 dark:bg-gray-900 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-6">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 text-center">
+                      <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
                       Seleccionar Archivo PDF *
                     </label>
                     <input
                       type="file"
                       accept=".pdf,application/pdf"
                       onChange={(e) => setFile(e.target.files?.[0] || null)}
-                      className="mt-1 block w-full text-sm text-gray-500 dark:text-gray-400
-                        file:mr-4 file:py-2 file:px-4
-                        file:rounded-md file:border-0
+                      className="block w-full text-sm text-gray-500 dark:text-gray-400
+                        file:mr-4 file:py-3 file:px-6
+                        file:rounded-xl file:border-0
                         file:text-sm file:font-semibold
-                        file:bg-indigo-50 file:text-indigo-700 dark:file:bg-indigo-900 dark:file:text-indigo-200
-                        hover:file:bg-indigo-100 dark:hover:file:bg-indigo-800"
+                        file:bg-indigo-600 file:text-white
+                        hover:file:bg-indigo-700 file:cursor-pointer
+                        cursor-pointer"
                       required
                     />
                     {file && (
-                      <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                        Archivo seleccionado: <span className="font-medium">{file.name}</span> ({(file.size / 1024).toFixed(2)} KB)
-                      </p>
+                      <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                        <p className="text-sm text-green-800 dark:text-green-200 flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          <span><span className="font-medium">{file.name}</span> ({(file.size / 1024).toFixed(2)} KB)</span>
+                        </p>
+                      </div>
                     )}
                   </div>
 
                   <button
                     type="submit"
                     disabled={uploadingLab}
-                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full flex justify-center items-center gap-2 py-4 px-6 border border-transparent rounded-xl shadow-lg text-base font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02]"
                   >
-                    {uploadingLab ? "Subiendo..." : "Subir PDF a Laboratorio"}
+                    {uploadingLab ? (
+                      <>
+                        <RefreshCw className="h-5 w-5 animate-spin" />
+                        Subiendo...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-5 w-5" />
+                        Subir PDF a Laboratorio
+                      </>
+                    )}
                   </button>
                 </form>
+                </div>
               </div>
             )}
 
             {/* Pestaña: Laboratorio */}
             {activeTab === "laboratorio" && (
-              <div className="p-4 sm:p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg sm:text-xl font-semibold text-gray-700 dark:text-white">
-                    Exámenes de Laboratorio
-                  </h3>
-                  <button
-                    onClick={loadLabExams}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600"
-                  >
-                    Actualizar
-                  </button>
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+                <div className="p-5 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                        <TestTube className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        Exámenes de Laboratorio
+                      </h3>
+                    </div>
+                    <button
+                      onClick={loadLabExams}
+                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Actualizar
+                    </button>
+                  </div>
                 </div>
+                <div className="p-6">
 
                 {loadingLabExams ? (
-                  <div className="text-center py-12">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 dark:border-indigo-400 mx-auto"></div>
-                    <p className="mt-4 text-gray-600 dark:text-gray-400">Cargando exámenes...</p>
+                  <div className="text-center py-16">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-green-600 dark:border-green-400 mx-auto"></div>
+                    <p className="mt-4 text-gray-600 dark:text-gray-400 font-medium">Cargando exámenes...</p>
                   </div>
                 ) : labExams.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-gray-500 dark:text-gray-400">No hay exámenes de laboratorio registrados</p>
+                  <div className="text-center py-16">
+                    <TestTube className="h-16 w-16 mx-auto mb-4 text-gray-400 opacity-50" />
+                    <p className="text-lg text-gray-500 dark:text-gray-400 font-medium">No hay exámenes de laboratorio registrados</p>
                     <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
                       Los documentos que subas aparecerán aquí
                     </p>
@@ -519,20 +636,23 @@ export default function Medical() {
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              {exam.archivo_resultado && (
+                              <div className="flex items-center justify-end gap-2">
+                                {exam.archivo_resultado && (
+                                  <button
+                                    onClick={() => downloadLabDocument(exam.id)}
+                                    className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                                  >
+                                    <Download className="h-4 w-4" />
+                                    PDF
+                                  </button>
+                                )}
                                 <button
-                                  onClick={() => downloadLabDocument(exam.id)}
-                                  className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 mr-4"
+                                  onClick={() => navigate(`/admisiones/${exam.admision_id}`)}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
                                 >
-                                  Descargar PDF
+                                  Ver
                                 </button>
-                              )}
-                              <button
-                                onClick={() => navigate(`/admisiones/${exam.admision_id}`)}
-                                className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300"
-                              >
-                                Ver Admisión
-                              </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -540,32 +660,46 @@ export default function Medical() {
                     </table>
                   </div>
                 )}
+                </div>
               </div>
             )}
 
             {/* Pestaña: Lista */}
             {activeTab === "lista" && (
-              <div className="p-4 sm:p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg sm:text-xl font-semibold text-gray-700 dark:text-white">
-                    {t("medical.medicalRecords")}
-                  </h3>
-                  <button
-                    onClick={loadData}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600"
-                  >
-                    Actualizar
-                  </button>
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+                <div className="p-5 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                        <List className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                        {t("medical.medicalRecords")}
+                      </h3>
+                    </div>
+                    <button
+                      onClick={loadData}
+                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Actualizar
+                    </button>
+                  </div>
                 </div>
+                <div className="p-6">
 
                 {loading ? (
-                  <div className="text-center py-12">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 dark:border-indigo-400 mx-auto"></div>
-                    <p className="mt-4 text-gray-600 dark:text-gray-400">{t("common.loading")}</p>
+                  <div className="text-center py-16">
+                    <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-600 dark:border-purple-400 mx-auto"></div>
+                    <p className="mt-4 text-gray-600 dark:text-gray-400 font-medium">{t("common.loading")}</p>
                   </div>
                 ) : records.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-gray-500 dark:text-gray-400">{t("common.noData")}</p>
+                  <div className="text-center py-16">
+                    <List className="h-16 w-16 mx-auto mb-4 text-gray-400 opacity-50" />
+                    <p className="text-lg text-gray-500 dark:text-gray-400 font-medium">{t("common.noData")}</p>
+                    <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
+                      Las historias clínicas que crees aparecerán aquí
+                    </p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -640,7 +774,7 @@ export default function Medical() {
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                               <button
                                 onClick={() => navigate(`/admisiones/${r.admision_id || r.id}`)}
-                                className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300"
+                                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
                               >
                                 Ver Detalles
                               </button>
@@ -651,6 +785,7 @@ export default function Medical() {
                     </table>
                   </div>
                 )}
+                </div>
               </div>
             )}
           </div>

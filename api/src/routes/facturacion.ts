@@ -1,11 +1,10 @@
 import express, { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../utils/database";
 import PDFDocument from "pdfkit";
 import { submitInvoiceSunat, validateDocument } from "../services/sunat";
 import { createPaymentIntent } from "../services/payments";
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // GET /api/facturacion/stripe-config - Obtener configuración de Stripe para el frontend
 router.get("/stripe-config", async (req: Request, res: Response) => {
@@ -134,6 +133,27 @@ router.post("/facturas", async (req: Request, res: Response) => {
       metodo_pago,
       fecha_vencimiento
     } = req.body;
+
+    // Verificar si ya existe una factura para esta admisión
+    const facturaExistente = await prisma.factura.findUnique({
+      where: { admision_id },
+      include: {
+        admision: {
+          include: {
+            paciente: {
+              include: { usuario: true }
+            }
+          }
+        }
+      }
+    });
+
+    if (facturaExistente) {
+      return res.status(409).json({ 
+        error: "Ya existe una factura para esta admisión",
+        factura: facturaExistente
+      });
+    }
 
     const tipoComprobante = tipo_comprobante || "03";
     const serie = numero_serie || (tipoComprobante === "01" ? "F001" : "B001");
@@ -648,7 +668,7 @@ router.get("/facturas/:id/boleta", async (req: Request, res: Response) => {
       `inline; filename="boleta-${factura.numero_correlativo || factura.id}.pdf"`
     );
 
-    const doc = new PDFDocument({ margin: 50 });
+    const doc = new PDFDocument({ margin: 40, size: "A4" });
     doc.pipe(res);
 
     const formatMoney = (v?: any) => {
@@ -656,74 +676,276 @@ router.get("/facturas/:id/boleta", async (req: Request, res: Response) => {
       return `S/ ${n.toFixed(2)}`;
     };
 
-    // Encabezado con datos de la clínica
     const nombreClinica = configClinica?.nombre || "CLÍNICA / CENTRO MÉDICO";
     const rucClinica = configClinica?.ruc || "—";
     const direccionClinica = configClinica?.direccion || "—";
-    
-    doc
-      .fontSize(16)
-      .text(nombreClinica, { align: "left", continued: false });
-    doc.fontSize(10).text(`RUC: ${rucClinica}`);
-    doc.text(`Dirección: ${direccionClinica}`);
-    doc.moveDown(0.5);
-    doc
-      .fontSize(14)
-      .text("BOLETA DE VENTA", { align: "right" })
-      .fontSize(10)
-      .text(`Serie: ${factura.numero_serie || "B001"}`, { align: "right" })
-      .text(
-        `Número: ${factura.numero_correlativo || "—"}`,
-        { align: "right" }
-      )
-      .text(
-        `Fecha: ${
-          factura.fecha_emision
-            ? new Date(factura.fecha_emision).toLocaleDateString("es-PE")
-            : new Date().toLocaleDateString("es-PE")
-        }`,
-        { align: "right" }
-      );
+    const telefonoClinica = configClinica?.telefono || "—";
+    const emailClinica = configClinica?.email || "—";
 
-    doc.moveDown();
-    doc.fontSize(12).text("Datos del paciente", { underline: true });
-    doc.fontSize(10);
-    doc.text(`Nombre: ${paciente ? `${paciente.nombres || ""} ${paciente.apellidos || ""}`.trim() : "—"}`);
-    doc.text(`DNI: ${paciente?.dni || "—"}`);
+    // === HEADER CON GRADIENTE ===
+    // Fondo azul degradado
+    for (let i = 0; i < 100; i++) {
+      const y = 40 + i;
+      const opacity = 1 - (i / 100) * 0.3;
+      const blueValue = Math.round(59 + (i / 100) * 30); // De #3B82F6 a más claro
+      doc.rect(40, y, 515, 1)
+         .fillOpacity(opacity)
+         .fill(`rgb(${blueValue}, 130, 246)`);
+    }
+    doc.fillOpacity(1);
+
+    // Información de la clínica (lado izquierdo)
+    doc.fillColor("#FFFFFF")
+       .fontSize(18)
+       .font("Helvetica-Bold")
+       .text(nombreClinica, 50, 55, { width: 300 });
+    
+    doc.fontSize(9)
+       .font("Helvetica")
+       .fillColor("#F3F4F6")
+       .text(`RUC: ${rucClinica}`, 50, 80)
+       .text(`${direccionClinica}`, 50, 93, { width: 280 })
+       .text(`Tel: ${telefonoClinica} | ${emailClinica}`, 50, 106);
+
+    // Cuadro de comprobante (lado derecho)
+    doc.roundedRect(380, 50, 165, 95, 8)
+       .fillAndStroke("#FFFFFF", "#3B82F6")
+       .lineWidth(2);
+    
+    doc.fillColor("#1F2937")
+       .fontSize(12)
+       .font("Helvetica-Bold")
+       .text(factura.tipo_comprobante === "01" ? "FACTURA ELECTRÓNICA" : "BOLETA DE VENTA", 385, 60, { width: 155, align: "center" });
+    
+    doc.fillColor("#3B82F6")
+       .fontSize(14)
+       .text(`${factura.numero_serie || "B001"}-${String(factura.numero_correlativo || 0).padStart(8, "0")}`, 385, 82, { width: 155, align: "center" });
+    
+    doc.fillColor("#6B7280")
+       .fontSize(8)
+       .font("Helvetica")
+       .text(`Fecha de emisión:`, 385, 104, { width: 155, align: "center" });
+    
+    doc.fillColor("#1F2937")
+       .fontSize(9)
+       .font("Helvetica-Bold")
+       .text(
+         factura.fecha_emision
+           ? new Date(factura.fecha_emision).toLocaleDateString("es-PE", { 
+               day: "2-digit", 
+               month: "long", 
+               year: "numeric" 
+             })
+           : new Date().toLocaleDateString("es-PE", { 
+               day: "2-digit", 
+               month: "long", 
+               year: "numeric" 
+             }),
+         385, 117, { width: 155, align: "center" }
+       );
+
+    doc.moveDown(6);
+
+    // === SECCIÓN: DATOS DEL CLIENTE ===
+    const clienteY = doc.y + 20;
+    doc.roundedRect(40, clienteY, 515, 80, 5)
+       .fillAndStroke("#F9FAFB", "#E5E7EB");
+    
+    doc.fillColor("#3B82F6")
+       .fontSize(11)
+       .font("Helvetica-Bold")
+       .text("DATOS DEL CLIENTE", 50, clienteY + 12);
+    
+    doc.moveTo(50, clienteY + 28)
+       .lineTo(545, clienteY + 28)
+       .strokeColor("#E5E7EB")
+       .lineWidth(1)
+       .stroke();
+
+    doc.fillColor("#374151")
+       .fontSize(9)
+       .font("Helvetica");
+
+    const clienteNombre = paciente 
+      ? `${paciente.nombres || ""} ${paciente.apellidos || ""}`.trim() 
+      : "—";
+    const clienteDni = paciente?.dni || "—";
+    
+    doc.text("Cliente:", 50, clienteY + 38);
+    doc.font("Helvetica-Bold").text(clienteNombre, 140, clienteY + 38, { width: 250 });
+    
+    doc.font("Helvetica").text("DNI:", 50, clienteY + 52);
+    doc.font("Helvetica-Bold").text(clienteDni, 140, clienteY + 52);
+
     if (empresaPaciente) {
-      doc.text(`Empresa: ${empresaPaciente.razon_social || "—"}`);
+      doc.font("Helvetica").text("Empresa:", 50, clienteY + 66);
+      doc.font("Helvetica-Bold").text(empresaPaciente.razon_social || "—", 140, clienteY + 66, { width: 250 });
+      
       if ((empresaPaciente as any).ruc) {
-        doc.text(`RUC: ${(empresaPaciente as any).ruc}`);
+        doc.font("Helvetica").text("RUC:", 400, clienteY + 38);
+        doc.font("Helvetica-Bold").text((empresaPaciente as any).ruc, 440, clienteY + 38);
       }
     }
 
-    doc.moveDown();
-    doc.fontSize(12).text("Detalle", { underline: true });
-    doc.fontSize(10);
-    doc.text(
-      `Concepto: Examen médico ocupacional ${
-        factura.admision?.tipo_examen || ""
-      }`
-    );
-    if (factura.admision?.motivo_consulta) {
-      doc.text(`Motivo: ${factura.admision.motivo_consulta}`);
-    }
+    doc.moveDown(6);
+
+    // === SECCIÓN: DETALLE DEL SERVICIO ===
+    const detalleY = doc.y + 10;
+    doc.fillColor("#3B82F6")
+       .fontSize(11)
+       .font("Helvetica-Bold")
+       .text("DETALLE DEL SERVICIO", 40, detalleY);
+    
     doc.moveDown(0.5);
-    doc.text(`Subtotal: ${formatMoney(factura.subtotal)}`);
-    doc.text(`IGV (18%): ${formatMoney(factura.igv)}`);
-    doc.text(`Total: ${formatMoney(factura.total)}`, { font: "Helvetica-Bold" });
 
-    doc.moveDown();
-    doc.fontSize(12).text("Pago", { underline: true });
-    doc.fontSize(10);
-    doc.text(`Estado: ${factura.estado}`);
-    doc.text(`Método de pago: ${factura.metodo_pago || "—"}`);
-    if (factura.transaccion_id) {
-      doc.text(`Transacción: ${factura.transaccion_id}`);
+    // Encabezado de tabla
+    const tableStartY = doc.y;
+    doc.rect(40, tableStartY, 515, 25)
+       .fillAndStroke("#3B82F6", "#2563EB");
+    
+    doc.fillColor("#FFFFFF")
+       .fontSize(9)
+       .font("Helvetica-Bold")
+       .text("DESCRIPCIÓN", 50, tableStartY + 8, { width: 300 })
+       .text("CANT.", 360, tableStartY + 8, { width: 40, align: "center" })
+       .text("P. UNIT.", 410, tableStartY + 8, { width: 60, align: "right" })
+       .text("TOTAL", 480, tableStartY + 8, { width: 65, align: "right" });
+
+    // Fila del servicio
+    const rowY = tableStartY + 30;
+    doc.rect(40, rowY, 515, 35)
+       .fillAndStroke("#FFFFFF", "#E5E7EB")
+       .lineWidth(0.5);
+    
+    const descripcionServicio = `Examen médico ocupacional ${factura.admision?.tipo_examen || ""}`;
+    doc.fillColor("#374151")
+       .fontSize(9)
+       .font("Helvetica")
+       .text(descripcionServicio, 50, rowY + 8, { width: 300 });
+    
+    if (factura.admision?.motivo_consulta) {
+      doc.fontSize(8)
+         .fillColor("#6B7280")
+         .text(factura.admision.motivo_consulta, 50, rowY + 20, { width: 300 });
     }
 
-    doc.moveDown(1.5);
-    doc.fontSize(9).fillColor("gray").text("Documento generado automáticamente.", { align: "center" });
+    doc.fillColor("#374151")
+       .fontSize(9)
+       .text("1", 360, rowY + 12, { width: 40, align: "center" })
+       .text(formatMoney(factura.subtotal), 410, rowY + 12, { width: 60, align: "right" })
+       .font("Helvetica-Bold")
+       .text(formatMoney(factura.subtotal), 480, rowY + 12, { width: 65, align: "right" });
+
+    doc.moveDown(4);
+
+    // === SECCIÓN: RESUMEN DE TOTALES ===
+    const totalesY = doc.y + 10;
+    const totalesX = 350;
+    
+    // Subtotal
+    doc.fillColor("#6B7280")
+       .fontSize(9)
+       .font("Helvetica")
+       .text("Subtotal:", totalesX, totalesY, { width: 100, align: "left" });
+    doc.fillColor("#374151")
+       .font("Helvetica-Bold")
+       .text(formatMoney(factura.subtotal), totalesX + 110, totalesY, { width: 95, align: "right" });
+    
+    // IGV
+    doc.fillColor("#6B7280")
+       .font("Helvetica")
+       .text("IGV (18%):", totalesX, totalesY + 15, { width: 100, align: "left" });
+    doc.fillColor("#374151")
+       .font("Helvetica-Bold")
+       .text(formatMoney(factura.igv), totalesX + 110, totalesY + 15, { width: 95, align: "right" });
+    
+    // Línea separadora
+    doc.moveTo(totalesX, totalesY + 32)
+       .lineTo(555, totalesY + 32)
+       .strokeColor("#3B82F6")
+       .lineWidth(1.5)
+       .stroke();
+    
+    // Total
+    doc.roundedRect(totalesX - 5, totalesY + 38, 210, 30, 5)
+       .fillAndStroke("#DBEAFE", "#3B82F6");
+    
+    doc.fillColor("#1E40AF")
+       .fontSize(11)
+       .font("Helvetica-Bold")
+       .text("TOTAL A PAGAR:", totalesX, totalesY + 46, { width: 100, align: "left" });
+    doc.fillColor("#1F2937")
+       .fontSize(14)
+       .text(formatMoney(factura.total), totalesX + 110, totalesY + 45, { width: 95, align: "right" });
+
+    doc.moveDown(4);
+
+    // === SECCIÓN: INFORMACIÓN DE PAGO ===
+    const pagoY = doc.y + 15;
+    doc.roundedRect(40, pagoY, 250, 60, 5)
+       .fillAndStroke("#F0FDF4", "#10B981");
+    
+    doc.fillColor("#065F46")
+       .fontSize(10)
+       .font("Helvetica-Bold")
+       .text("INFORMACIÓN DE PAGO", 50, pagoY + 10);
+
+    const estadoColor = factura.estado === "pagado" ? "#10B981" : factura.estado === "pendiente" ? "#F59E0B" : "#EF4444";
+    const estadoTexto = factura.estado === "pagado" ? "PAGADO" : factura.estado === "pendiente" ? "PENDIENTE" : "ANULADO";
+    
+    doc.fillColor("#374151")
+       .fontSize(9)
+       .font("Helvetica")
+       .text("Estado:", 50, pagoY + 28);
+    doc.fillColor(estadoColor)
+       .font("Helvetica-Bold")
+       .text(estadoTexto, 110, pagoY + 28);
+    
+    doc.fillColor("#374151")
+       .font("Helvetica")
+       .text("Método:", 50, pagoY + 42);
+    doc.font("Helvetica-Bold")
+       .text((factura.metodo_pago || "efectivo").toUpperCase(), 110, pagoY + 42);
+
+    // Código QR simulado o información adicional
+    if (factura.transaccion_id) {
+      doc.roundedRect(310, pagoY, 245, 60, 5)
+         .fillAndStroke("#FEF3C7", "#F59E0B");
+      
+      doc.fillColor("#92400E")
+         .fontSize(9)
+         .font("Helvetica-Bold")
+         .text("CÓDIGO DE TRANSACCIÓN", 320, pagoY + 10);
+      
+      doc.fillColor("#78350F")
+         .fontSize(8)
+         .font("Helvetica")
+         .text(factura.transaccion_id, 320, pagoY + 28, { width: 225 });
+    }
+
+    // === FOOTER ===
+    const footerY = 750;
+    doc.moveTo(40, footerY)
+       .lineTo(555, footerY)
+       .strokeColor("#E5E7EB")
+       .lineWidth(1)
+       .stroke();
+    
+    doc.fillColor("#6B7280")
+       .fontSize(7)
+       .font("Helvetica")
+       .text("Este documento ha sido generado electrónicamente y tiene validez legal.", 40, footerY + 8, { 
+         width: 515, 
+         align: "center" 
+       });
+    
+    doc.fillColor("#9CA3AF")
+       .fontSize(7)
+       .text(`Sistema de Salud Laboral | Generado el ${new Date().toLocaleDateString("es-PE")} a las ${new Date().toLocaleTimeString("es-PE")}`, 40, footerY + 20, { 
+         width: 515, 
+         align: "center" 
+       });
+
     doc.end();
   } catch (error: any) {
     console.error("Error generando boleta PDF:", error);

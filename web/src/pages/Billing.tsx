@@ -3,6 +3,24 @@ import { useTranslation } from "react-i18next";
 import { api } from "../api";
 import AppLayout from "../components/Layout/AppLayout";
 import { useToast } from "../contexts/ToastContext";
+import { 
+  Receipt, 
+  User, 
+  DollarSign, 
+  FileText, 
+  Send, 
+  Download, 
+  RefreshCw, 
+  Plus, 
+  CheckCircle, 
+  XCircle, 
+  Clock, 
+  AlertCircle,
+  List,
+  Calendar,
+  Hash,
+  Building2
+} from "lucide-react";
 
 export default function Billing() {
   const { t } = useTranslation();
@@ -160,288 +178,382 @@ export default function Billing() {
   return (
     <AppLayout>
       <div className="py-4 sm:py-6">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 dark:text-white mb-4 sm:mb-6">{t("billing.title")}</h2>
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
+          {/* Header Profesional */}
+          <div className="mb-6">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+              <div className="p-2 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-xl">
+                <Receipt className="h-7 w-7 text-blue-600 dark:text-blue-400" />
+              </div>
+              {t("billing.title")}
+            </h1>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Gestión de facturación electrónica y comprobantes</p>
+          </div>
           
-          {/* Pestañas */}
-          <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
-            <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`
-                    whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
-                    ${
-                      activeTab === tab.id
-                        ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
-                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
-                    }
-                  `}
-                >
-                  {tab.label}
-                </button>
-              ))}
+          {/* Pestañas Modernas */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-1 mb-6">
+            <nav className="flex gap-1" aria-label="Tabs">
+              <button
+                onClick={() => setActiveTab("nueva")}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium text-sm transition-all duration-200 ${
+                  activeTab === "nueva"
+                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
+                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                }`}
+              >
+                <Plus className="h-5 w-5" />
+                Nueva Factura
+              </button>
+              <button
+                onClick={() => setActiveTab("lista")}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium text-sm transition-all duration-200 ${
+                  activeTab === "lista"
+                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md"
+                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                }`}
+              >
+                <List className="h-5 w-5" />
+                Lista de Facturas
+              </button>
             </nav>
           </div>
 
           {/* Contenido de las pestañas */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
             {/* Pestaña: Nueva Factura */}
             {activeTab === "nueva" && (
-              <div className="p-4 sm:p-6">
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-700 dark:text-white mb-4">{t("billing.newInvoice")}</h3>
-                <form onSubmit={createInvoice} className="grid grid-cols-1 gap-4 max-w-full sm:max-w-md">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {t("billing.selectPatient")} *
-                    </label>
-                    <select
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                      value={form.patientId}
-                      onChange={(e) => setForm({ ...form, patientId: e.target.value })}
-                      required
-                    >
-                      <option value="">Seleccionar Paciente</option>
-                      {patients.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.usuario?.nombres || ""} {p.usuario?.apellidos || ""} - DNI: {p.usuario?.dni || ""}
-                        </option>
-                      ))}
-                    </select>
+              <>
+                <div className="p-5 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                      <Plus className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t("billing.newInvoice")}</h3>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                </div>
+                <div className="p-6">
+                  <form onSubmit={createInvoice} className="grid grid-cols-1 gap-5 max-w-2xl">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Tipo *
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        <span className="flex items-center gap-2">
+                          <User className="h-4 w-4" />
+                          {t("billing.selectPatient")} *
+                        </span>
                       </label>
-                      <select 
-                        className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white" 
-                        value={form.type} 
-                        onChange={(e) => {
-                          const newType = e.target.value;
-                          setForm({ 
-                            ...form, 
-                            type: newType,
-                            series: newType === "01" ? "F001" : "B001" // Auto-completar serie según tipo
-                          });
-                        }}
+                      <select
+                        className="block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                        value={form.patientId}
+                        onChange={(e) => setForm({ ...form, patientId: e.target.value })}
                         required
                       >
-                        <option value="01">Factura</option>
-                        <option value="03">Boleta</option>
+                        <option value="">Seleccionar Paciente</option>
+                        {patients.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.usuario?.nombres || ""} {p.usuario?.apellidos || ""} - DNI: {p.usuario?.dni || ""}
+                          </option>
+                        ))}
                       </select>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Serie *
-                      </label>
-                      <input 
-                        className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500" 
-                        placeholder={form.type === "01" ? "F001" : "B001"}
-                        value={form.series} 
-                        onChange={(e) => setForm({ ...form, series: e.target.value.toUpperCase() })} 
-                        required
-                        maxLength={4}
-                      />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                          <span className="flex items-center gap-2">
+                            <FileText className="h-4 w-4" />
+                            Tipo de Comprobante *
+                          </span>
+                        </label>
+                        <select 
+                          className="block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200" 
+                          value={form.type} 
+                          onChange={(e) => {
+                            const newType = e.target.value;
+                            setForm({ 
+                              ...form, 
+                              type: newType,
+                              series: newType === "01" ? "F001" : "B001"
+                            });
+                          }}
+                          required
+                        >
+                          <option value="01">📄 Factura Electrónica</option>
+                          <option value="03">🧾 Boleta de Venta</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                          <span className="flex items-center gap-2">
+                            <Hash className="h-4 w-4" />
+                            Serie *
+                          </span>
+                        </label>
+                        <input 
+                          className="block w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200" 
+                          placeholder={form.type === "01" ? "F001" : "B001"}
+                          value={form.series} 
+                          onChange={(e) => setForm({ ...form, series: e.target.value.toUpperCase() })} 
+                          required
+                          maxLength={4}
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      {t("billing.amount")} *
-                    </label>
-                    <input
-                      className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                      placeholder={t("billing.amount")}
-                      type="number"
-                      value={form.amount}
-                      onChange={(e) => setForm({ ...form, amount: parseFloat(e.target.value) })}
-                      step="0.01"
-                      required
-                    />
-                  </div>
-                  <button
-                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-700 dark:bg-blue-600 hover:bg-blue-800 dark:hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                    type="submit"
-                  >
-                    {t("billing.newInvoice")}
-                  </button>
-                </form>
-              </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                        <span className="flex items-center gap-2">
+                          <DollarSign className="h-4 w-4" />
+                          {t("billing.amount")} (Incluye IGV) *
+                        </span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 font-medium">S/</span>
+                        <input
+                          className="block w-full pl-12 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-xl shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition duration-200"
+                          placeholder="0.00"
+                          type="number"
+                          value={form.amount}
+                          onChange={(e) => setForm({ ...form, amount: parseFloat(e.target.value) })}
+                          step="0.01"
+                          min="0"
+                          required
+                        />
+                      </div>
+                      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        El monto total incluye IGV (18%). Subtotal: S/ {form.amount ? (form.amount / 1.18).toFixed(2) : '0.00'}
+                      </p>
+                    </div>
+                    <button
+                      className="w-full flex justify-center items-center gap-2 py-4 px-6 border border-transparent rounded-xl shadow-lg text-base font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:scale-[1.02]"
+                      type="submit"
+                    >
+                      <Receipt className="h-5 w-5" />
+                      Crear Factura
+                    </button>
+                  </form>
+                </div>
+              </>
             )}
 
             {/* Pestaña: Lista */}
             {activeTab === "lista" && (
-              <div className="p-4 sm:p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <div>
-                    <h3 className="text-lg sm:text-xl font-semibold text-gray-700 dark:text-white">{t("billing.invoices")}</h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Para verificar el estado en SUNAT, visita el portal de APISUNAT o revisa la columna "Estado SUNAT"
-                    </p>
+              <>
+                <div className="p-5 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                          <List className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{t("billing.invoices")}</h3>
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 ml-12">
+                        Gestiona tus comprobantes y envía a SUNAT
+                      </p>
+                    </div>
+                    <button
+                      onClick={loadData}
+                      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Actualizar
+                    </button>
                   </div>
-                  <button
-                    onClick={loadData}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600"
-                  >
-                    Actualizar
-                  </button>
                 </div>
+                <div className="p-6">
 
-                {loading ? (
-                  <div className="text-center py-12">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 dark:border-indigo-400 mx-auto"></div>
-                    <p className="mt-4 text-gray-600 dark:text-gray-400">{t("common.loading")}</p>
-                  </div>
-                ) : invoices.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-gray-500 dark:text-gray-400">{t("common.noData")}</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto -mx-4 sm:mx-0">
-                    <div className="inline-block min-w-full align-middle">
-                      <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                          <thead className="bg-gray-50 dark:bg-gray-900">
-                            <tr>
-                              <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                Número
-                              </th>
-                              <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden sm:table-cell">
-                                Paciente
-                              </th>
-                              <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                Total
-                              </th>
-                              <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">
-                                IGV
-                              </th>
-                              <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                Estado
-                              </th>
-                              <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden lg:table-cell">
-                                SUNAT
-                              </th>
-                              <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider hidden md:table-cell">
-                                Fecha
-                              </th>
-                              <th scope="col" className="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                                Acciones
-                              </th>
-                            </tr>
-                          </thead>
-                      <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                        {invoices.map((i) => (
-                          <tr key={i.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                            <td className="px-3 py-2 whitespace-nowrap">
-                              <div className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
-                                {i.numero_serie && i.numero_correlativo 
-                                  ? `${i.numero_serie}-${String(i.numero_correlativo).padStart(6, '0')}` 
-                                  : i.numero_correlativo 
-                                  ? `N° ${String(i.numero_correlativo).padStart(6, '0')}` 
-                                  : i.numero_serie
-                                  ? `${i.numero_serie}-000000`
-                                  : i.numero || i.number || "N/A"}
-                              </div>
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap hidden sm:table-cell">
-                              <div className="text-xs sm:text-sm text-gray-900 dark:text-white">
-                                {i.admision?.paciente?.usuario?.nombres || "N/A"} {i.admision?.paciente?.usuario?.apellidos || ""}
-                              </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400">
-                                DNI: {i.admision?.paciente?.usuario?.dni || "N/A"}
-                              </div>
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap">
-                              <div className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
-                                S/ {i.total ? Number(i.total).toFixed(2) : "0.00"}
-                              </div>
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell">
-                              <div className="text-xs sm:text-sm text-gray-900 dark:text-white">
-                                {i.igv ? `S/ ${Number(i.igv).toFixed(2)}` : "N/A"}
-                              </div>
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                i.estado === "pagado" || i.status === "accepted"
-                                  ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300"
-                                  : i.estado === "rechazado" || i.status === "rejected"
-                                    ? "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300"
-                                    : i.estado === "pendiente" || i.status === "new" || i.status === "pending"
-                                      ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300"
-                                      : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300"
-                              }`}>
-                                {i.estado === "pagado" ? "Pagado" : 
-                                 i.estado === "pendiente" ? "Pendiente" : 
-                                 i.estado || i.status || t("billing.pending")}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap hidden lg:table-cell">
-                              {i.xml_sunat || i.cdr_sunat ? (
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                  i.cdr_sunat || i.sunat_status === "accepted"
-                                    ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300"
-                                    : i.sunat_status === "rejected" || i.sunat_status === "error"
-                                      ? "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300"
-                                      : "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300"
-                                }`}>
-                                  {i.cdr_sunat ? "✓ CDR" : 
-                                   i.sunat_status === "accepted" ? "✓ Aceptado" :
-                                   i.sunat_status === "rejected" ? "✗ Rechazado" :
-                                   i.sunat_status === "error" ? "✗ Error" :
-                                   "⏳ Enviado"}
-                                </span>
-                              ) : (
-                                <span className="text-xs text-gray-400 dark:text-gray-500">
-                                  No enviado
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap hidden md:table-cell">
-                              <div className="text-xs sm:text-sm text-gray-900 dark:text-white">
-                                {i.fecha_emision 
-                                  ? new Date(i.fecha_emision).toLocaleDateString("es-PE", { day: '2-digit', month: '2-digit', year: 'numeric' })
-                                  : "N/A"}
-                              </div>
-                            </td>
-                            <td className="px-3 py-2 whitespace-nowrap text-right text-xs sm:text-sm font-medium">
-                              <div className="flex flex-col sm:flex-row items-end gap-1 sm:gap-2">
-                                {i.id && (
-                                  <button
-                                    onClick={() => downloadBoleta(i.id, i.numero_correlativo)}
-                                    className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 text-xs"
-                                  >
-                                    Ver
-                                  </button>
-                                )}
-                                {(i.estado === "pendiente" || i.status === "new" || i.status === "pending") && i.id && (
-                                  <button
-                                    className="bg-blue-600 dark:bg-blue-500 text-white rounded px-2 py-1 text-xs hover:bg-blue-700 dark:hover:bg-blue-600"
-                                    onClick={() => {
-                                      console.log("Enviando factura a SUNAT, ID:", i.id);
-                                      sendSunat(i.id);
-                                    }}
-                                  >
+                  {loading ? (
+                    <div className="text-center py-16">
+                      <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 dark:border-blue-400 mx-auto"></div>
+                      <p className="mt-4 text-gray-600 dark:text-gray-400 font-medium">{t("common.loading")}</p>
+                    </div>
+                  ) : invoices.length === 0 ? (
+                    <div className="text-center py-16">
+                      <Receipt className="h-16 w-16 mx-auto mb-4 text-gray-400 opacity-50" />
+                      <p className="text-lg text-gray-500 dark:text-gray-400 font-medium">{t("common.noData")}</p>
+                      <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
+                        Las facturas que crees aparecerán aquí
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <div className="inline-block min-w-full align-middle">
+                        <div className="overflow-hidden border border-gray-200 dark:border-gray-700 rounded-xl">
+                          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead className="bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+                              <tr>
+                                <th scope="col" className="px-4 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                                  <span className="flex items-center gap-1">
+                                    <Hash className="h-3.5 w-3.5" />
+                                    Número
+                                  </span>
+                                </th>
+                                <th scope="col" className="px-4 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider hidden sm:table-cell">
+                                  <span className="flex items-center gap-1">
+                                    <User className="h-3.5 w-3.5" />
+                                    Paciente
+                                  </span>
+                                </th>
+                                <th scope="col" className="px-4 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                                  <span className="flex items-center gap-1">
+                                    <DollarSign className="h-3.5 w-3.5" />
+                                    Total
+                                  </span>
+                                </th>
+                                <th scope="col" className="px-4 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider hidden md:table-cell">
+                                  <span className="flex items-center gap-1">
+                                    <DollarSign className="h-3.5 w-3.5" />
+                                    IGV
+                                  </span>
+                                </th>
+                                <th scope="col" className="px-4 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                                  <span className="flex items-center gap-1">
+                                    <AlertCircle className="h-3.5 w-3.5" />
+                                    Estado
+                                  </span>
+                                </th>
+                                <th scope="col" className="px-4 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider hidden lg:table-cell">
+                                  <span className="flex items-center gap-1">
+                                    <Building2 className="h-3.5 w-3.5" />
                                     SUNAT
-                                  </button>
-                                )}
-                                {(i.cdr_sunat || i.cdr_url || i.sunatCdrUrl) && (
-                                  <a className="text-blue-600 dark:text-blue-400 hover:underline text-xs" href={i.cdr_url || i.sunatCdrUrl} target="_blank" rel="noopener noreferrer">
-                                    Ver CDR
-                                  </a>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                                  </span>
+                                </th>
+                                <th scope="col" className="px-4 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider hidden md:table-cell">
+                                  <span className="flex items-center gap-1">
+                                    <Calendar className="h-3.5 w-3.5" />
+                                    Fecha
+                                  </span>
+                                </th>
+                                <th scope="col" className="px-4 py-4 text-right text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                                  Acciones
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                              {invoices.map((i) => (
+                                <tr key={i.id} className="hover:bg-blue-50 dark:hover:bg-gray-700/50 transition-colors">
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    <div className="text-sm font-semibold text-gray-900 dark:text-white">
+                                      {i.numero_serie && i.numero_correlativo 
+                                        ? `${i.numero_serie}-${String(i.numero_correlativo).padStart(6, '0')}` 
+                                        : i.numero_correlativo 
+                                        ? `N° ${String(i.numero_correlativo).padStart(6, '0')}` 
+                                        : i.numero_serie
+                                        ? `${i.numero_serie}-000000`
+                                        : i.numero || i.number || "N/A"}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap hidden sm:table-cell">
+                                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                      {i.admision?.paciente?.usuario?.nombres || "N/A"} {i.admision?.paciente?.usuario?.apellidos || ""}
+                                    </div>
+                                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                      DNI: {i.admision?.paciente?.usuario?.dni || "N/A"}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    <div className="text-sm font-bold text-green-600 dark:text-green-400">
+                                      S/ {i.total ? Number(i.total).toFixed(2) : "0.00"}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap hidden md:table-cell">
+                                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                                      {i.igv ? `S/ ${Number(i.igv).toFixed(2)}` : "N/A"}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap">
+                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm ${
+                                      i.estado === "pagado" || i.status === "accepted"
+                                        ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white"
+                                        : i.estado === "rechazado" || i.status === "rejected"
+                                          ? "bg-gradient-to-r from-red-500 to-rose-500 text-white"
+                                          : i.estado === "pendiente" || i.status === "new" || i.status === "pending"
+                                            ? "bg-gradient-to-r from-yellow-500 to-orange-500 text-white"
+                                            : "bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-300"
+                                    }`}>
+                                      {i.estado === "pagado" || i.status === "accepted" ? <CheckCircle className="h-3.5 w-3.5" /> :
+                                       i.estado === "rechazado" || i.status === "rejected" ? <XCircle className="h-3.5 w-3.5" /> :
+                                       i.estado === "pendiente" || i.status === "new" || i.status === "pending" ? <Clock className="h-3.5 w-3.5" /> :
+                                       <AlertCircle className="h-3.5 w-3.5" />}
+                                      {i.estado === "pagado" ? "Pagado" : 
+                                       i.estado === "pendiente" ? "Pendiente" : 
+                                       i.estado || i.status || t("billing.pending")}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap hidden lg:table-cell">
+                                    {i.xml_sunat || i.cdr_sunat ? (
+                                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm ${
+                                        i.cdr_sunat || i.sunat_status === "accepted"
+                                          ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white"
+                                          : i.sunat_status === "rejected" || i.sunat_status === "error"
+                                            ? "bg-gradient-to-r from-red-500 to-rose-500 text-white"
+                                            : "bg-gradient-to-r from-blue-500 to-indigo-500 text-white"
+                                      }`}>
+                                        {i.cdr_sunat || i.sunat_status === "accepted" ? <CheckCircle className="h-3.5 w-3.5" /> :
+                                         i.sunat_status === "rejected" || i.sunat_status === "error" ? <XCircle className="h-3.5 w-3.5" /> :
+                                         <Clock className="h-3.5 w-3.5" />}
+                                        {i.cdr_sunat ? "CDR" : 
+                                         i.sunat_status === "accepted" ? "Aceptado" :
+                                         i.sunat_status === "rejected" ? "Rechazado" :
+                                         i.sunat_status === "error" ? "Error" :
+                                         "Enviado"}
+                                      </span>
+                                    ) : (
+                                      <span className="text-xs text-gray-400 dark:text-gray-500 italic">
+                                        No enviado
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap hidden md:table-cell">
+                                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                                      {i.fecha_emision 
+                                        ? new Date(i.fecha_emision).toLocaleDateString("es-PE", { day: '2-digit', month: '2-digit', year: 'numeric' })
+                                        : "N/A"}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4 whitespace-nowrap text-right">
+                                    <div className="flex items-center justify-end gap-2">
+                                      {i.id && (
+                                        <button
+                                          onClick={() => downloadBoleta(i.id, i.numero_correlativo)}
+                                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                                        >
+                                          <Download className="h-3.5 w-3.5" />
+                                          PDF
+                                        </button>
+                                      )}
+                                      {(i.estado === "pendiente" || i.status === "new" || i.status === "pending") && i.id && (
+                                        <button
+                                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-green-600 to-emerald-600 rounded-lg hover:from-green-700 hover:to-emerald-700 shadow-sm transition-all"
+                                          onClick={() => {
+                                            console.log("Enviando factura a SUNAT, ID:", i.id);
+                                            sendSunat(i.id);
+                                          }}
+                                        >
+                                          <Send className="h-3.5 w-3.5" />
+                                          SUNAT
+                                        </button>
+                                      )}
+                                      {(i.cdr_sunat || i.cdr_url || i.sunatCdrUrl) && (
+                                        <a 
+                                          className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors" 
+                                          href={i.cdr_url || i.sunatCdrUrl} 
+                                          target="_blank" 
+                                          rel="noopener noreferrer"
+                                        >
+                                          <FileText className="h-3.5 w-3.5" />
+                                          CDR
+                                        </a>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
         </div>

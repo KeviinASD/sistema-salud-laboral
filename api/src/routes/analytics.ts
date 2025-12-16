@@ -1,9 +1,8 @@
 import express, { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../utils/database";
 import PDFDocument from "pdfkit";
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // GET /api/analytics/dashboards - Dashboard principal
 router.get("/dashboards", async (req: Request, res: Response) => {
@@ -536,9 +535,9 @@ router.post("/reports/pdf", async (req: Request, res: Response) => {
       console.error("Error obteniendo configuración de clínica:", error);
     }
 
-    // Generar PDF profesional
+    // Generar PDF profesional con colores vibrantes
     const doc = new PDFDocument({ 
-      margin: 50,
+      margin: 40,
       size: "A4",
       info: {
         Title: `Reporte Estadístico - ${getReportTypeName(tipo)}`,
@@ -548,7 +547,6 @@ router.post("/reports/pdf", async (req: Request, res: Response) => {
       }
     });
     
-    // Manejar errores del stream
     doc.on("error", (err: Error) => {
       console.error("Error en PDF stream:", err);
       if (!res.headersSent) {
@@ -558,7 +556,6 @@ router.post("/reports/pdf", async (req: Request, res: Response) => {
     
     res.on("error", (err: Error) => {
       console.error("Error en response stream:", err);
-      // El stream se cerrará automáticamente
     });
     
     res.setHeader("Content-Type", "application/pdf");
@@ -566,60 +563,87 @@ router.post("/reports/pdf", async (req: Request, res: Response) => {
     
     doc.pipe(res);
 
-    // Encabezado profesional
+    // HEADER MODERNO CON GRADIENTE
     const nombreClinica = configClinica?.nombre || "CLÍNICA / CENTRO MÉDICO";
     const rucClinica = configClinica?.ruc || "—";
     const direccionClinica = configClinica?.direccion || "—";
     
-    // Línea superior decorativa
-    doc.rect(50, 50, 495, 60)
-       .fillColor(hexToRgb("#1e40af"))
-       .fill();
+    // Fondo degradado azul a morado (simulado con rectángulos)
+    const gradientSteps = 8;
+    const headerHeight = 80;
+    const headerWidth = 515;
+    for (let i = 0; i < gradientSteps; i++) {
+      const r = Math.round(30 + (88 - 30) * (i / gradientSteps));
+      const g = Math.round(64 + (28 - 64) * (i / gradientSteps));
+      const b = Math.round(175 + (183 - 175) * (i / gradientSteps));
+      doc.rect(40, 40 + (headerHeight / gradientSteps) * i, headerWidth, headerHeight / gradientSteps)
+         .fillColor([r, g, b])
+         .fill();
+    }
     
-    doc.fillColor("white")
-       .fontSize(18)
+    // Texto del header
+    doc.fillColor("#FFFFFF")
+       .fontSize(22)
        .font("Helvetica-Bold")
-       .text(nombreClinica, 50, 65, { width: 495, align: "center" });
+       .text(nombreClinica, 40, 55, { width: headerWidth, align: "center" });
     doc.fontSize(10)
-       .text(`RUC: ${rucClinica} | ${direccionClinica}`, 50, 90, { width: 495, align: "center" });
-    
-    doc.fillColor("black");
-    doc.moveDown(2);
-
-    // Título del reporte
-    doc.fontSize(20)
-       .font("Helvetica-Bold")
-       .text("REPORTE ESTADÍSTICO Y ANALÍTICO", { align: "center" });
-    doc.moveDown(0.5);
-    doc.fontSize(16)
        .font("Helvetica")
-       .text(getReportTypeName(tipo), { align: "center" });
+       .text(`RUC: ${rucClinica}`, 40, 85, { width: headerWidth, align: "center" });
+    doc.fontSize(9)
+       .text(direccionClinica, 40, 100, { width: headerWidth, align: "center" });
     
-    // Información del período
+    doc.fillColor("#000000");
+    doc.moveDown(3);
+
+    // Título del reporte con caja colorida
+    const titleY = 140;
+    doc.roundedRect(60, titleY, 475, 70, 10)
+       .fillAndStroke("#F3F4F6", "#E5E7EB");
+    
+    doc.fillColor("#1F2937")
+       .fontSize(24)
+       .font("Helvetica-Bold")
+       .text("REPORTE ESTADÍSTICO", 70, titleY + 12, { width: 455, align: "center" });
+    doc.moveDown(0.3);
+    doc.fontSize(18)
+       .fillColor("#4F46E5")
+       .text(getReportTypeName(tipo), { width: 455, align: "center" });
+    
+    // Información del período en badges
     const fechaInicio = fecha_desde ? new Date(fecha_desde).toLocaleDateString("es-PE") : "Inicio";
     const fechaFin = fecha_hasta ? new Date(fecha_hasta).toLocaleDateString("es-PE") : new Date().toLocaleDateString("es-PE");
-    doc.moveDown(0.5);
-    doc.fontSize(11)
-       .fillColor("gray")
-       .text(`Período: ${fechaInicio} - ${fechaFin}`, { align: "center" });
-    doc.text(`Fecha de generación: ${new Date().toLocaleDateString("es-PE", { 
-      day: "2-digit", 
-      month: "long", 
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit"
-    })}`, { align: "center" });
     
-    doc.fillColor("black");
-    doc.moveDown(1.5);
+    doc.moveDown(2);
+    const badgeY = doc.y;
+    
+    // Badge de período
+    doc.roundedRect(120, badgeY, 180, 25, 5)
+       .fillAndStroke("#DBEAFE", "#3B82F6");
+    doc.fillColor("#1E40AF")
+       .fontSize(9)
+       .font("Helvetica-Bold")
+       .text(`Período: ${fechaInicio} - ${fechaFin}`, 125, badgeY + 8, { width: 170, align: "center" });
+    
+    // Badge de fecha de generación
+    doc.roundedRect(315, badgeY, 140, 25, 5)
+       .fillAndStroke("#FEF3C7", "#F59E0B");
+    doc.fillColor("#92400E")
+       .text(`Generado: ${new Date().toLocaleDateString("es-PE")}`, 320, badgeY + 8, { width: 130, align: "center" });
+    
+    doc.fillColor("#000000").font("Helvetica");
+    doc.moveDown(2);
 
-    // Línea separadora
-    doc.moveTo(50, doc.y)
-       .lineTo(545, doc.y)
-       .strokeColor("gray")
-       .lineWidth(1)
-       .stroke();
-    doc.moveDown(1);
+    // Línea separadora con degradado
+    for (let i = 0; i < 495; i += 2) {
+      const opacity = Math.sin((i / 495) * Math.PI);
+      const grayValue = Math.round(200 * opacity);
+      doc.moveTo(50 + i, doc.y)
+         .lineTo(50 + i + 2, doc.y)
+         .strokeColor([grayValue, grayValue, grayValue])
+         .lineWidth(2)
+         .stroke();
+    }
+    doc.moveDown(1.5);
 
     // Contenido según tipo
     switch (tipo) {
@@ -637,44 +661,31 @@ router.post("/reports/pdf", async (req: Request, res: Response) => {
         break;
     }
 
-    // Pie de página simple - agregar al final para evitar problemas de recursión
-    // No usamos pageAdded para evitar problemas con bufferedPageRange()
-    const addSimpleFooter = (pageNum: number) => {
-      try {
-        const pageHeight = doc.page.height;
-        const pageWidth = doc.page.width;
-        const savedY = doc.y;
-        const savedX = doc.x;
-        
-        doc.fontSize(8)
-           .fillColor("gray")
-           .text(
-             `Generado por Sistema de Salud Laboral`,
-             50,
-             pageHeight - 30,
-             { width: pageWidth - 100, align: "center" }
-           );
-        
-        // Restaurar posición
-        doc.y = savedY;
-        doc.x = savedX;
-      } catch (err) {
-        // Silenciar errores
-      }
-    };
-    
-    // Agregar footer solo al final, no en cada página para evitar recursión
-    // El footer se agregará manualmente si es necesario
-
-    // Finalizar el PDF
-    try {
-    doc.end();
-    } catch (err: any) {
-      console.error("Error finalizando PDF:", err);
-      if (!res.headersSent) {
-        res.status(500).json({ error: "Error al finalizar PDF" });
-      }
+    // Footer moderno
+    const range = doc.bufferedPageRange();
+    for (let i = 0; i < range.count; i++) {
+      doc.switchToPage(range.start + i);
+      const pageHeight = doc.page.height;
+      const pageWidth = doc.page.width;
+      
+      // Línea superior del footer
+      doc.moveTo(40, pageHeight - 50)
+         .lineTo(pageWidth - 40, pageHeight - 50)
+         .strokeColor("#E5E7EB")
+         .lineWidth(1)
+         .stroke();
+      
+      doc.fontSize(8)
+         .fillColor("#6B7280")
+         .text(
+           `Generado por Sistema de Salud Laboral | Página ${i + 1} de ${range.count}`,
+           40,
+           pageHeight - 35,
+           { width: pageWidth - 80, align: "center" }
+         );
     }
+
+    doc.end();
   } catch (error: any) {
     console.error("Error generando PDF:", error);
     if (!res.headersSent) {
@@ -725,11 +736,7 @@ function generateAdmissionsPDF(doc: any, data: any) {
     const datos = data.datos || {};
     const meses = Object.keys(datos).sort();
     const valores = meses.map(m => datos[m]);
-    const datosSemanales = data.datosSemanales || {};
-    const porEmpresa = data.porEmpresa || {};
-    const porDiaSemana = data.porDiaSemana || {};
 
-    // Validar que hay datos
     if (valores.length === 0 || valores.every(v => v === 0)) {
       doc.fontSize(12).text("No hay datos disponibles para mostrar.", { align: "center" });
       return;
@@ -742,465 +749,365 @@ function generateAdmissionsPDF(doc: any, data: any) {
     const mesMaximo = meses[valores.indexOf(maximo)];
     const mesMinimo = meses[valores.indexOf(minimo)];
     
-    // Cálculos estadísticos avanzados
+    // Cálculos estadísticos
     const valoresOrdenados = [...valores].sort((a, b) => a - b);
     const mediana = valoresOrdenados.length % 2 === 0
       ? (valoresOrdenados[valoresOrdenados.length / 2 - 1] + valoresOrdenados[valoresOrdenados.length / 2]) / 2
       : valoresOrdenados[Math.floor(valoresOrdenados.length / 2)];
     
-    // Desviación estándar
     const varianza = valores.reduce((acc, val) => acc + Math.pow(val - promedio, 2), 0) / valores.length;
     const desviacionEstandar = Math.sqrt(varianza);
-    
-    // Moda (valor más frecuente)
-    const frecuencia: { [key: number]: number } = {};
-    valores.forEach(v => frecuencia[v] = (frecuencia[v] || 0) + 1);
-    const moda = Object.keys(frecuencia).reduce((a, b) => frecuencia[Number(a)] > frecuencia[Number(b)] ? a : b);
-    
-    // Coeficiente de variación
     const coeficienteVariacion = promedio > 0 ? (desviacionEstandar / promedio * 100).toFixed(2) : "0.00";
     
     // Cálculo de tendencia (regresión lineal simple)
-    const n = valores.length;
-    const sumX = valores.reduce((acc, _, i) => acc + (i + 1), 0);
-    const sumY = valores.reduce((acc, val) => acc + val, 0);
-    const sumXY = valores.reduce((acc, val, i) => acc + (i + 1) * val, 0);
-    const sumX2 = valores.reduce((acc, _, i) => acc + Math.pow(i + 1, 2), 0);
-    const pendiente = (n * sumXY - sumX * sumY) / (n * sumX2 - Math.pow(sumX, 2));
-    const tendencia = pendiente > 0 ? "Creciente" : pendiente < 0 ? "Decreciente" : "Estable";
-    const tasaCrecimiento = Math.abs(pendiente).toFixed(2);
+    let pendiente = 0;
+    let tasaCrecimiento = "0.0";
+    if (valores.length > 1) {
+      const n = valores.length;
+      const sumX = (n * (n - 1)) / 2; // suma de índices 0,1,2,...,n-1
+      const sumY = valores.reduce((a, b) => a + b, 0);
+      const sumXY = valores.reduce((acc, val, idx) => acc + idx * val, 0);
+      const sumX2 = (n * (n - 1) * (2 * n - 1)) / 6; // suma de cuadrados de índices
+      
+      pendiente = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+      tasaCrecimiento = pendiente.toFixed(1);
+    }
 
-    // Resumen ejecutivo mejorado
-    doc.fontSize(16).font("Helvetica-Bold").text("RESUMEN EJECUTIVO", { underline: true });
+    // SECCIÓN 1: RESUMEN EJECUTIVO CON CARDS COLORIDAS
+    doc.fontSize(18).font("Helvetica-Bold").fillColor("#1F2937");
+    doc.text("RESUMEN EJECUTIVO", 60, doc.y, { width: 475, underline: true, align: "center" });
     doc.moveDown(0.8);
     
-    // Métricas principales en dos columnas
-    const startY = doc.y;
-    const col1X = 60;
-    const col2X = 320;
-    const lineHeight = 18;
+    const cardStartY = doc.y;
+    const cardWidth = 115;
+    const cardHeight = 75;
+    const gap = 10;
     
-    doc.fontSize(10).font("Helvetica");
+    // Card 1: Total (Azul)
+    doc.roundedRect(60, cardStartY, cardWidth, cardHeight, 8)
+       .fillAndStroke("#DBEAFE", "#3B82F6");
+    doc.fillColor("#1E40AF").fontSize(9).font("Helvetica-Bold")
+       .text("TOTAL", 65, cardStartY + 10, { width: cardWidth - 10 });
+    doc.fillColor("#1F2937").fontSize(24)
+       .text(total.toString(), 65, cardStartY + 30, { width: cardWidth - 10 });
+    doc.fillColor("#6B7280").fontSize(8).font("Helvetica")
+       .text("admisiones", 65, cardStartY + 60, { width: cardWidth - 10 });
     
-    // Columna 1
-    doc.text(`Total de Admisiones:`, col1X, startY, { continued: false, width: 200 });
-    doc.font("Helvetica-Bold").text(`${total}`, { continued: false });
-    doc.font("Helvetica");
+    // Card 2: Promedio (Verde)
+    doc.roundedRect(60 + cardWidth + gap, cardStartY, cardWidth, cardHeight, 8)
+       .fillAndStroke("#D1FAE5", "#10B981");
+    doc.fillColor("#065F46").fontSize(9).font("Helvetica-Bold")
+       .text("PROMEDIO", 65 + cardWidth + gap, cardStartY + 10, { width: cardWidth - 10 });
+    doc.fillColor("#1F2937").fontSize(24)
+       .text(promedio.toFixed(1), 65 + cardWidth + gap, cardStartY + 30, { width: cardWidth - 10 });
+    doc.fillColor("#6B7280").fontSize(8).font("Helvetica")
+       .text("por mes", 65 + cardWidth + gap, cardStartY + 60, { width: cardWidth - 10 });
     
-    doc.text(`Promedio Mensual:`, col1X, startY + lineHeight, { continued: false, width: 200 });
-    doc.font("Helvetica-Bold").text(`${promedio.toFixed(2)}`, { continued: false });
-    doc.font("Helvetica");
+    // Card 3: Máximo (Naranja)
+    doc.roundedRect(60 + (cardWidth + gap) * 2, cardStartY, cardWidth, cardHeight, 8)
+       .fillAndStroke("#FEF3C7", "#F59E0B");
+    doc.fillColor("#92400E").fontSize(9).font("Helvetica-Bold")
+       .text("MÁXIMO", 65 + (cardWidth + gap) * 2, cardStartY + 10, { width: cardWidth - 10 });
+    doc.fillColor("#1F2937").fontSize(24)
+       .text(maximo.toString(), 65 + (cardWidth + gap) * 2, cardStartY + 30, { width: cardWidth - 10 });
+    doc.fillColor("#6B7280").fontSize(8).font("Helvetica")
+       .text(mesMaximo.substring(0, 8), 65 + (cardWidth + gap) * 2, cardStartY + 60, { width: cardWidth - 10 });
     
-    doc.text(`Mediana:`, col1X, startY + lineHeight * 2, { continued: false, width: 200 });
-    doc.font("Helvetica-Bold").text(`${mediana.toFixed(2)}`, { continued: false });
-    doc.font("Helvetica");
+    // Card 4: Mediana (Morado)
+    doc.roundedRect(60 + (cardWidth + gap) * 3, cardStartY, cardWidth, cardHeight, 8)
+       .fillAndStroke("#EDE9FE", "#8B5CF6");
+    doc.fillColor("#5B21B6").fontSize(9).font("Helvetica-Bold")
+       .text("MEDIANA", 65 + (cardWidth + gap) * 3, cardStartY + 10, { width: cardWidth - 10 });
+    doc.fillColor("#1F2937").fontSize(24)
+       .text(mediana.toFixed(1), 65 + (cardWidth + gap) * 3, cardStartY + 30, { width: cardWidth - 10 });
+    doc.fillColor("#6B7280").fontSize(8).font("Helvetica")
+       .text("valor central", 65 + (cardWidth + gap) * 3, cardStartY + 60, { width: cardWidth - 10 });
     
-    doc.text(`Moda:`, col1X, startY + lineHeight * 3, { continued: false, width: 200 });
-    doc.font("Helvetica-Bold").text(`${moda}`, { continued: false });
-    doc.font("Helvetica");
-    
-    // Columna 2
-    doc.text(`Mes con Mayor Número:`, col2X, startY, { continued: false, width: 200 });
-    doc.font("Helvetica-Bold").text(`${mesMaximo} (${maximo})`, { continued: false });
-    doc.font("Helvetica");
-    
-    doc.text(`Mes con Menor Número:`, col2X, startY + lineHeight, { continued: false, width: 200 });
-    doc.font("Helvetica-Bold").text(`${mesMinimo} (${minimo})`, { continued: false });
-    doc.font("Helvetica");
-    
-    doc.text(`Desviación Estándar:`, col2X, startY + lineHeight * 2, { continued: false, width: 200 });
-    doc.font("Helvetica-Bold").text(`${desviacionEstandar.toFixed(2)}`, { continued: false });
-    doc.font("Helvetica");
-    
-    doc.text(`Coef. Variación:`, col2X, startY + lineHeight * 3, { continued: false, width: 200 });
-    doc.font("Helvetica-Bold").text(`${coeficienteVariacion}%`, { continued: false });
-    doc.font("Helvetica");
-    
-    doc.moveDown(2);
+    doc.y = cardStartY + cardHeight + 20;
 
-  // Tabla de datos
-  doc.fontSize(14).font("Helvetica-Bold").text("DETALLE POR MES", { underline: true });
-  doc.moveDown(0.5);
-  
-  // Encabezado de tabla
-  const tableTop = doc.y;
-  doc.fontSize(10).font("Helvetica-Bold");
-  doc.text("Mes", 60, tableTop);
-  doc.text("Cantidad", 300, tableTop);
-  doc.text("Porcentaje", 420, tableTop);
-  doc.text("Tendencia", 500, tableTop);
-  
-  // Línea debajo del encabezado
-  doc.moveTo(60, tableTop + 15)
-     .lineTo(545, tableTop + 15)
-     .strokeColor("black")
-     .lineWidth(0.5)
-     .stroke();
-  
-  // Filas de datos
-  let currentY = tableTop + 20;
-  doc.font("Helvetica").fontSize(10);
-  
-  meses.forEach((mes, index) => {
-    const valor = valores[index];
-    const porcentaje = total > 0 ? ((valor / total) * 100).toFixed(2) : "0.00";
-    const tendencia = index > 0 ? (valor > valores[index - 1] ? "↑" : valor < valores[index - 1] ? "↓" : "→") : "—";
+    // SECCIÓN 2: GRÁFICO DE BARRAS COLORIDO
+    if (doc.y > 650) doc.addPage();
     
-    doc.text(mes, 60, currentY);
-    doc.text(`${valor}`, 300, currentY);
-    doc.text(`${porcentaje}%`, 420, currentY);
-    doc.text(tendencia, 500, currentY);
+    doc.fontSize(18).font("Helvetica-Bold").fillColor("#1F2937");
+    doc.text("GRÁFICO DE ADMISIONES MENSUALES", 60, doc.y, { width: 475, underline: true, align: "center" });
+    doc.moveDown(0.8);
     
-    // Línea separadora
-    doc.moveTo(60, currentY + 12)
-       .lineTo(545, currentY + 12)
-       .strokeColor("lightgray")
-       .lineWidth(0.3)
-       .stroke();
-    
-    currentY += 15;
-    
-    // Nueva página si es necesario
-    if (currentY > 750) {
-      doc.addPage();
-      currentY = 50;
-    }
-  });
-  
-  // Fila de totales
-  doc.moveDown(0.5);
-  doc.font("Helvetica-Bold");
-  doc.moveTo(60, doc.y)
-     .lineTo(545, doc.y)
-     .strokeColor("black")
-     .lineWidth(1)
-     .stroke();
-  doc.moveDown(0.3);
-  doc.text("TOTAL", 60, doc.y);
-  doc.text(`${total}`, 300, doc.y);
-  doc.text("100.00%", 420, doc.y);
-  
-  doc.moveDown(1);
-  
-  // Gráfico de barras vectorial
-  if (meses.length > 0 && valores.length > 0) {
+    const chartStartY = doc.y;
+    const chartHeight = 180;
+    const chartWidth = 480;
+    const chartStartX = 60;
+    const barWidth = Math.min(50, chartWidth / (meses.length * 1.3));
     const maxValue = Math.max(...valores, 1);
-    if (maxValue > 0) {
-      doc.fontSize(14).font("Helvetica-Bold").text("GRÁFICO DE BARRAS - ADMISIONES MENSUALES", { underline: true });
-      doc.moveDown(0.5);
-      
-      const chartStartY = doc.y;
-      const chartHeight = 150;
-      const chartWidth = 450;
-      const chartStartX = 60;
-      const barWidth = chartWidth / (meses.length * 1.5);
     
-    // Ejes
-    doc.strokeColor("black")
-       .lineWidth(1)
-       .moveTo(chartStartX, chartStartY)
-       .lineTo(chartStartX, chartStartY + chartHeight)
-       .lineTo(chartStartX + chartWidth, chartStartY + chartHeight)
-       .stroke();
+    // Fondo del gráfico
+    doc.rect(chartStartX, chartStartY, chartWidth, chartHeight)
+       .fillAndStroke("#F9FAFB", "#E5E7EB");
     
-    // Etiquetas del eje Y
+    // Líneas de guía horizontales
     const ySteps = 5;
     for (let i = 0; i <= ySteps; i++) {
       const value = Math.round((maxValue / ySteps) * i);
       const yPos = chartStartY + chartHeight - (chartHeight / ySteps) * i;
-      doc.fontSize(8)
-         .fillColor("gray")
-         .text(value.toString(), chartStartX - 20, yPos - 5, { align: "right", width: 15 });
       
-      // Línea de guía
+      // Etiqueta
+      doc.fontSize(8).fillColor("#6B7280")
+         .text(value.toString(), chartStartX - 25, yPos - 3, { align: "right", width: 20 });
+      
+      // Línea guía
       if (i < ySteps) {
-        doc.strokeColor("lightgray")
-           .lineWidth(0.3)
+        doc.strokeColor("#E5E7EB").lineWidth(0.5)
            .moveTo(chartStartX, yPos)
            .lineTo(chartStartX + chartWidth, yPos)
            .stroke();
       }
     }
     
-    // Barras
+    // Dibujar barras coloridas
+    const barColors = [
+      [59, 130, 246],   // Azul
+      [16, 185, 129],   // Verde
+      [245, 158, 11],   // Naranja
+      [239, 68, 68],    // Rojo
+      [139, 92, 246],   // Morado
+      [236, 72, 153],   // Rosa
+      [14, 165, 233],   // Cyan
+      [34, 197, 94]     // Verde claro
+    ];
+    
     meses.forEach((mes, index) => {
       const valor = valores[index];
-      const barHeight = (valor / maxValue) * chartHeight;
-      const xPos = chartStartX + (index * barWidth * 1.5) + 10;
-      const yPos = chartStartY + chartHeight - barHeight;
+      const barHeight = (valor / maxValue) * (chartHeight - 10);
+      const xPos = chartStartX + 15 + (index * (barWidth + 15));
+      const yPos = chartStartY + chartHeight - barHeight - 5;
+      const color = barColors[index % barColors.length];
       
-      // Color de la barra
-      const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"];
-      const colorHex = colors[index % colors.length];
-      const colorRgb = hexToRgb(colorHex);
+      // Barra con gradiente simulado
+      for (let i = 0; i < barHeight; i += 2) {
+        const opacity = 0.7 + (0.3 * (i / barHeight));
+        const r = Math.round(color[0] * opacity);
+        const g = Math.round(color[1] * opacity);
+        const b = Math.round(color[2] * opacity);
+        doc.rect(xPos, yPos + i, barWidth, 2)
+           .fillColor([r, g, b])
+           .fill();
+      }
       
-      // Dibujar barra
-      doc.rect(xPos, yPos, barWidth - 5, barHeight)
-         .fillColor(colorRgb)
-         .fill()
-         .strokeColor("black")
-         .lineWidth(0.5)
-         .stroke();
+      // Valor encima de la barra
+      doc.fontSize(9).font("Helvetica-Bold").fillColor("#1F2937")
+         .text(valor.toString(), xPos, yPos - 12, { width: barWidth, align: "center" });
       
-      // Valor sobre la barra
-      doc.fontSize(8)
-         .fillColor("black")
-         .text(valor.toString(), xPos, yPos - 12, { width: barWidth - 5, align: "center" });
-      
-      // Etiqueta del mes (rotada o truncada)
-      const mesLabel = mes.length > 8 ? mes.substring(0, 6) + "..." : mes;
-      doc.fontSize(7)
-         .fillColor("gray")
-         .text(mesLabel, xPos, chartStartY + chartHeight + 5, { width: barWidth - 5, align: "center" });
+      // Etiqueta del mes (rotada)
+      doc.save();
+      doc.translate(xPos + barWidth / 2, chartStartY + chartHeight + 10);
+      doc.rotate(-45);
+      doc.fontSize(7).fillColor("#4B5563")
+         .text(mes.substring(0, 8), 0, 0);
+      doc.restore();
     });
     
-      doc.moveDown(2);
-    }
+    doc.y = chartStartY + chartHeight + 45;
+
+    // SECCIÓN 3: TABLA DETALLADA CON COLORES
+    if (doc.y > 650) doc.addPage();
     
-    // Gráfico de línea de tendencia
-    if (meses.length > 1 && valores.length > 1) {
-      doc.fontSize(14).font("Helvetica-Bold").text("GRÁFICO DE LÍNEA DE TENDENCIA", { underline: true });
-      doc.moveDown(0.5);
+    doc.fontSize(18).font("Helvetica-Bold").fillColor("#1F2937");
+    doc.text("DETALLE POR MES", 60, doc.y, { width: 475, underline: true, align: "center" });
+    doc.moveDown(0.8);
+    
+    // Encabezado de tabla
+    const tableTop = doc.y;
+    doc.rect(60, tableTop, 480, 25)
+       .fillAndStroke("#4F46E5", "#4338CA");
+    
+    doc.fontSize(10).font("Helvetica-Bold").fillColor("#FFFFFF");
+    doc.text("MES", 70, tableTop + 8, { width: 150 });
+    doc.text("CANTIDAD", 250, tableTop + 8, { width: 80, align: "center" });
+    doc.text("PORCENTAJE", 350, tableTop + 8, { width: 80, align: "center" });
+    doc.text("TREND", 450, tableTop + 8, { width: 80, align: "center" });
+    
+    // Filas de datos
+    let currentY = tableTop + 30;
+    doc.font("Helvetica").fontSize(9);
+    
+    meses.forEach((mes, index) => {
+      const valor = valores[index];
+      const porcentaje = total > 0 ? ((valor / total) * 100).toFixed(1) : "0.0";
+      const tendencia = index > 0 ? (valor > valores[index - 1] ? "↑" : valor < valores[index - 1] ? "↓" : "→") : "—";
       
-      const chartStartY = doc.y;
-      const chartHeight = 120;
-      const chartWidth = 450;
-      const chartStartX = 60;
-      const maxValue = Math.max(...valores, 1);
-      
-      if (maxValue > 0) {
-        // Ejes
-        doc.strokeColor("black")
-           .lineWidth(1)
-           .moveTo(chartStartX, chartStartY)
-           .lineTo(chartStartX, chartStartY + chartHeight)
-           .lineTo(chartStartX + chartWidth, chartStartY + chartHeight)
-           .stroke();
-        
-        // Línea de promedio
-        const promedioY = chartStartY + chartHeight - (promedio / maxValue) * chartHeight;
-        doc.strokeColor("red")
-           .lineWidth(1)
-           .dash(5, { space: 3 })
-           .moveTo(chartStartX, promedioY)
-           .lineTo(chartStartX + chartWidth, promedioY)
-           .stroke()
-           .undash();
-        
-        // Etiqueta de promedio
-        doc.fontSize(7)
-           .fillColor("red")
-           .text(`Promedio: ${promedio.toFixed(1)}`, chartStartX + chartWidth - 80, promedioY - 8);
-        
-        // Línea de tendencia
-        const pointSpacing = chartWidth / (meses.length - 1);
-        let prevX = chartStartX;
-        let prevY = chartStartY + chartHeight - (valores[0] / maxValue) * chartHeight;
-        
-        doc.strokeColor(hexToRgb("#3b82f6"))
-           .lineWidth(2);
-        
-        valores.forEach((valor, index) => {
-          if (index > 0) {
-            const x = chartStartX + (index * pointSpacing);
-            const y = chartStartY + chartHeight - (valor / maxValue) * chartHeight;
-            
-            // Dibujar línea
-            doc.moveTo(prevX, prevY)
-               .lineTo(x, y)
-               .stroke();
-            
-            // Dibujar punto
-            doc.circle(x, y, 3)
-               .fillColor(hexToRgb("#3b82f6"))
-               .fill();
-            
-            prevX = x;
-            prevY = y;
-          } else {
-            // Primer punto
-            doc.circle(prevX, prevY, 3)
-               .fillColor(hexToRgb("#3b82f6"))
-               .fill();
-          }
-        });
-        
-        // Etiquetas del eje X
-        meses.forEach((mes, index) => {
-          const x = chartStartX + (index * pointSpacing);
-          const mesLabel = mes.length > 6 ? mes.substring(5, 7) : mes;
-          doc.fontSize(7)
-             .fillColor("black")
-             .text(mesLabel, x - 10, chartStartY + chartHeight + 5, { width: 20, align: "center" });
-        });
-        
-        doc.moveDown(2);
+      // Fila alternada
+      if (index % 2 === 0) {
+        doc.rect(60, currentY - 3, 480, 20).fillColor("#F9FAFB").fill();
       }
-    }
+      
+      doc.fillColor("#1F2937");
+      doc.text(mes, 70, currentY, { width: 150 });
+      doc.text(valor.toString(), 250, currentY, { width: 80, align: "center" });
+      doc.text(`${porcentaje}%`, 350, currentY, { width: 80, align: "center" });
+      
+      // Tendencia con color
+      const trendColor = tendencia === "↑" ? "#10B981" : tendencia === "↓" ? "#EF4444" : "#6B7280";
+      doc.fillColor(trendColor).font("Helvetica-Bold");
+      doc.text(tendencia, 450, currentY, { width: 80, align: "center" });
+      doc.font("Helvetica");
+      
+      currentY += 20;
+      
+      if (currentY > 750) {
+        doc.addPage();
+        currentY = 50;
+      }
+    });
     
-    // Gráfico comparativo con promedio
-    if (meses.length > 0 && valores.length > 0) {
-      doc.fontSize(14).font("Helvetica-Bold").text("COMPARACIÓN CON PROMEDIO MENSUAL", { underline: true });
-      doc.moveDown(0.5);
-      
-      const chartStartY = doc.y;
-      const chartHeight = 120;
-      const chartWidth = 450;
-      const chartStartX = 60;
-      const maxDeviation = Math.max(...valores.map(v => Math.abs(v - promedio)), promedio);
-      const barWidth = chartWidth / (meses.length * 1.5);
-      
-      // Ejes
-      doc.strokeColor("black")
-         .lineWidth(1)
-         .moveTo(chartStartX, chartStartY)
-         .lineTo(chartStartX, chartStartY + chartHeight)
-         .lineTo(chartStartX + chartWidth, chartStartY + chartHeight)
-         .stroke();
-      
-      // Línea de promedio
-      const promedioY = chartStartY + chartHeight / 2;
-      doc.strokeColor("red")
-         .lineWidth(1)
-         .dash(5, { space: 3 })
-         .moveTo(chartStartX, promedioY)
-         .lineTo(chartStartX + chartWidth, promedioY)
-         .stroke()
-         .undash();
-      
-      // Etiqueta de promedio
-      doc.fontSize(7)
-         .fillColor("red")
-         .text(`Promedio: ${promedio.toFixed(1)}`, chartStartX + chartWidth - 80, promedioY - 8);
-      
-      // Barras comparativas
-      meses.forEach((mes, index) => {
-        const valor = valores[index];
-        const diferencia = valor - promedio;
-        const barHeight = Math.abs(diferencia / maxDeviation) * (chartHeight / 2);
-        const xPos = chartStartX + (index * barWidth * 1.5) + 10;
-        
-        if (diferencia > 0) {
-          // Por encima del promedio
-          const yPos = promedioY - barHeight;
-          doc.rect(xPos, yPos, barWidth - 5, barHeight)
-             .fillColor(hexToRgb("#10b981"))
-             .fill()
-             .strokeColor("black")
-             .lineWidth(0.5)
-             .stroke();
-        } else if (diferencia < 0) {
-          // Por debajo del promedio
-          const yPos = promedioY;
-          doc.rect(xPos, yPos, barWidth - 5, barHeight)
-             .fillColor(hexToRgb("#ef4444"))
-             .fill()
-             .strokeColor("black")
-             .lineWidth(0.5)
-             .stroke();
-        }
-        
-        // Valor
-        doc.fontSize(7)
-           .fillColor("black")
-           .text(valor.toString(), xPos, diferencia > 0 ? promedioY - barHeight - 10 : promedioY + barHeight + 2, 
-                 { width: barWidth - 5, align: "center" });
-      });
-      
-      doc.moveDown(2);
-    }
+    // Fila de totales
+    currentY += 5;
+    doc.rect(60, currentY - 3, 480, 25).fillAndStroke("#EDE9FE", "#8B5CF6");
+    doc.font("Helvetica-Bold").fillColor("#5B21B6");
+    doc.text("TOTAL", 70, currentY + 5, { width: 150 });
+    doc.text(total.toString(), 250, currentY + 5, { width: 80, align: "center" });
+    doc.text("100.0%", 350, currentY + 5, { width: 80, align: "center" });
     
-    // Distribución por empresa (si hay datos)
-    const porEmpresa = data.porEmpresa || {};
-    if (Object.keys(porEmpresa).length > 0) {
-      doc.fontSize(14).font("Helvetica-Bold").text("DISTRIBUCIÓN POR EMPRESA (Top 5)", { underline: true });
-      doc.moveDown(0.5);
-      
-      const empresas = Object.entries(porEmpresa).sort((a: any, b: any) => b[1] - a[1]).slice(0, 5);
-      const totalEmpresas: number = Object.values(porEmpresa).reduce((a: any, b: any) => Number(a) + Number(b), 0) as number;
-      
-      empresas.forEach(([empresa, count]: [string, any], index) => {
-        const porcentaje = totalEmpresas > 0 ? ((count / totalEmpresas) * 100).toFixed(1) : "0.0";
-        doc.fontSize(9).font("Helvetica");
-        doc.text(`${index + 1}. ${empresa.length > 40 ? empresa.substring(0, 38) + "..." : empresa}`, 60, doc.y);
-        doc.font("Helvetica-Bold").text(`${count} (${porcentaje}%)`, 450, doc.y);
-        doc.font("Helvetica");
-        doc.moveDown(0.4);
-      });
-      
-      doc.moveDown(1);
-    }
+    doc.y = currentY + 40;
+
+    // SECCIÓN 4: ESTADÍSTICAS AVANZADAS
+    if (doc.y > 700) doc.addPage();
     
-    // Distribución por día de la semana (si hay datos)
-    const porDiaSemana = data.porDiaSemana || {};
-    if (Object.keys(porDiaSemana).length > 0) {
-      doc.fontSize(14).font("Helvetica-Bold").text("DISTRIBUCIÓN POR DÍA DE LA SEMANA", { underline: true });
-      doc.moveDown(0.5);
-      
-      const diasOrden = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
-      const totalDias: number = Object.values(porDiaSemana).reduce((a: any, b: any) => Number(a) + Number(b), 0) as number;
-      
-      diasOrden.forEach((dia) => {
-        const count = porDiaSemana[dia] || 0;
-        if (count > 0) {
-          const porcentaje = totalDias > 0 ? ((count / totalDias) * 100).toFixed(1) : "0.0";
-          doc.fontSize(9).font("Helvetica");
-          doc.text(`${dia}:`, 60, doc.y);
-          doc.font("Helvetica-Bold").text(`${count} (${porcentaje}%)`, 200, doc.y);
-          doc.font("Helvetica");
-          doc.moveDown(0.4);
-        }
-      });
-      
-      doc.moveDown(1);
-    }
-  }
-  
-    // Análisis estadístico avanzado
-    doc.fontSize(14).font("Helvetica-Bold").text("ANÁLISIS ESTADÍSTICO AVANZADO", { underline: true });
-    doc.moveDown(0.6);
-    doc.fontSize(10).font("Helvetica");
+    doc.fontSize(18).font("Helvetica-Bold").fillColor("#1F2937");
+    doc.text("ANÁLISIS ESTADÍSTICO", 60, doc.y, { width: 475, underline: true, align: "center" });
+    doc.moveDown(0.8);
     
-    // Usar las variables ya calculadas al inicio de la función
-    const tendenciaTexto = Number(pendiente) > 0.1 ? "Creciente" : Number(pendiente) < -0.1 ? "Decreciente" : "Estable";
+    const statsY = doc.y;
+    const statsCardWidth = 150;
+    const statsCardHeight = 60;
     
-    doc.text(`• Tendencia General: ${tendenciaTexto} (${tasaCrecimiento} admisiones/mes)`);
+    // Card: Desviación Estándar
+    doc.roundedRect(60, statsY, statsCardWidth, statsCardHeight, 8)
+       .fillAndStroke("#FEE2E2", "#EF4444");
+    doc.fillColor("#991B1B").fontSize(8).font("Helvetica-Bold")
+       .text("DESVIACIÓN ESTÁNDAR", 65, statsY + 10, { width: statsCardWidth - 10 });
+    doc.fillColor("#1F2937").fontSize(18)
+       .text(desviacionEstandar.toFixed(2), 65, statsY + 28, { width: statsCardWidth - 10 });
+    
+    // Card: Coef. Variación
+    doc.roundedRect(220, statsY, statsCardWidth, statsCardHeight, 8)
+       .fillAndStroke("#DBEAFE", "#3B82F6");
+    doc.fillColor("#1E40AF").fontSize(8).font("Helvetica-Bold")
+       .text("COEF. VARIACIÓN", 225, statsY + 10, { width: statsCardWidth - 10 });
+    doc.fillColor("#1F2937").fontSize(18)
+       .text(`${coeficienteVariacion}%`, 225, statsY + 28, { width: statsCardWidth - 10 });
+    
+    // Card: Rango
+    doc.roundedRect(380, statsY, statsCardWidth, statsCardHeight, 8)
+       .fillAndStroke("#D1FAE5", "#10B981");
+    doc.fillColor("#065F46").fontSize(8).font("Helvetica-Bold")
+       .text("RANGO", 385, statsY + 10, { width: statsCardWidth - 10 });
+    doc.fillColor("#1F2937").fontSize(18)
+       .text((maximo - minimo).toString(), 385, statsY + 28, { width: statsCardWidth - 10 });
+    
+    doc.fillColor("#000000").font("Helvetica");
+    
+    // SECCIÓN 4: INTERPRETACIÓN Y CONCLUSIONES
+    doc.moveDown(3);
+    if (doc.y > 650) doc.addPage();
+    
+    doc.fontSize(18).font("Helvetica-Bold").fillColor("#1F2937");
+    doc.text("INTERPRETACIÓN Y CONCLUSIONES", 60, doc.y, { width: 475, underline: true, align: "center" });
+    doc.moveDown(1);
+    
+    // Análisis de tendencia
+    doc.fontSize(12).font("Helvetica-Bold").fillColor("#3B82F6");
+    doc.text("Tendencia General:", 60, doc.y);
     doc.moveDown(0.3);
-    doc.text(`• Variación entre máximo y mínimo: ${maximo - minimo} admisiones (${minimo > 0 ? ((maximo - minimo) / minimo * 100).toFixed(2) : "0.00"}% de variación)`);
-    doc.moveDown(0.3);
-    doc.text(`• Desviación promedio: ${(valores.reduce((acc: number, val: number) => acc + Math.abs(val - promedio), 0) / valores.length).toFixed(2)} admisiones`);
-    doc.moveDown(0.3);
-    doc.text(`• Desviación estándar: ${desviacionEstandar.toFixed(2)} admisiones`);
-    doc.moveDown(0.3);
-    doc.text(`• Mediana: ${mediana.toFixed(2)} admisiones`);
-    doc.moveDown(0.3);
-    if (valoresOrdenados.length >= 4) {
-      const q1 = valoresOrdenados[Math.floor(valoresOrdenados.length * 0.25)];
-      const q3 = valoresOrdenados[Math.floor(valoresOrdenados.length * 0.75)];
-      doc.text(`• Rango intercuartílico: ${(q3 - q1).toFixed(2)} admisiones (Q1: ${q1.toFixed(2)}, Q3: ${q3.toFixed(2)})`);
-      doc.moveDown(0.3);
-    }
-    doc.text(`• Coeficiente de variación: ${coeficienteVariacion}% ${Number(coeficienteVariacion) < 15 ? "(Baja variabilidad)" : Number(coeficienteVariacion) < 35 ? "(Variabilidad moderada)" : "(Alta variabilidad)"}`);
-    doc.moveDown(0.3);
+    doc.fontSize(10).font("Helvetica").fillColor("#374151");
     
-    if (meses.length > 1 && valores[0] > 0) {
-      const crecimientoTotal = ((valores[valores.length - 1] - valores[0]) / valores[0]) * 100;
-      doc.text(`• Crecimiento total del período: ${crecimientoTotal.toFixed(2)}%`);
-      doc.moveDown(0.3);
+    let tendenciaTexto = "";
+    if (Number(pendiente) > 0.5) {
+      tendenciaTexto = `Se observa una tendencia CRECIENTE con un incremento promedio de ${tasaCrecimiento} admisiones por mes. Esto indica un aumento sostenido en la demanda de servicios de salud ocupacional.`;
+    } else if (Number(pendiente) < -0.5) {
+      tendenciaTexto = `Se observa una tendencia DECRECIENTE con una reducción promedio de ${Math.abs(Number(tasaCrecimiento))} admisiones por mes. Esto podría indicar una disminución en la actividad o mejoras en la prevención.`;
+    } else {
+      tendenciaTexto = `Se observa una tendencia ESTABLE con variaciones mínimas mes a mes (${tasaCrecimiento} admisiones/mes). El flujo de admisiones se mantiene relativamente constante.`;
+    }
+    doc.text(tendenciaTexto, 60, doc.y, { width: 475, align: "justify" });
+    doc.moveDown(1);
+    
+    // Análisis de variabilidad
+    doc.fontSize(12).font("Helvetica-Bold").fillColor("#10B981");
+    doc.text("Variabilidad:", 60, doc.y);
+    doc.moveDown(0.3);
+    doc.fontSize(10).font("Helvetica").fillColor("#374151");
+    
+    let variabilidadTexto = "";
+    if (Number(coeficienteVariacion) < 15) {
+      variabilidadTexto = `La variabilidad es BAJA (${coeficienteVariacion}%), lo que indica un comportamiento muy predecible y estable en el número de admisiones. Esto facilita la planificación de recursos.`;
+    } else if (Number(coeficienteVariacion) < 35) {
+      variabilidadTexto = `La variabilidad es MODERADA (${coeficienteVariacion}%), sugiriendo fluctuaciones regulares que requieren cierta flexibilidad en la asignación de recursos.`;
+    } else {
+      variabilidadTexto = `La variabilidad es ALTA (${coeficienteVariacion}%), indicando fluctuaciones significativas que requieren una gestión dinámica de recursos y personal.`;
+    }
+    doc.text(variabilidadTexto, 60, doc.y, { width: 475, align: "justify" });
+    doc.moveDown(1);
+    
+    // Comparación con promedio
+    doc.fontSize(12).font("Helvetica-Bold").fillColor("#F59E0B");
+    doc.text("Análisis del Período Actual:", 60, doc.y);
+    doc.moveDown(0.3);
+    doc.fontSize(10).font("Helvetica").fillColor("#374151");
+    
+    const ultimoValor = valores[valores.length - 1];
+    const diferenciaPromedio = ((ultimoValor - promedio) / promedio * 100).toFixed(1);
+    let comparacionTexto = "";
+    
+    if (ultimoValor > promedio * 1.1) {
+      comparacionTexto = `El último mes registrado (${ultimoValor} admisiones) está ${diferenciaPromedio}% POR ENCIMA del promedio histórico (${promedio.toFixed(1)} admisiones). Esto representa un incremento significativo que requiere atención.`;
+    } else if (ultimoValor < promedio * 0.9) {
+      comparacionTexto = `El último mes registrado (${ultimoValor} admisiones) está ${Math.abs(Number(diferenciaPromedio))}% POR DEBAJO del promedio histórico (${promedio.toFixed(1)} admisiones). Esto podría indicar una disminución temporal o estacional.`;
+    } else {
+      comparacionTexto = `El último mes registrado (${ultimoValor} admisiones) se encuentra dentro del rango normal, cerca del promedio histórico (${promedio.toFixed(1)} admisiones).`;
+    }
+    doc.text(comparacionTexto, 60, doc.y, { width: 475, align: "justify" });
+    doc.moveDown(1);
+    
+    // Recomendaciones
+    doc.fontSize(12).font("Helvetica-Bold").fillColor("#8B5CF6");
+    doc.text("Recomendaciones:", 60, doc.y);
+    doc.moveDown(0.5);
+    doc.fontSize(10).font("Helvetica").fillColor("#374151");
+    
+    const recomendaciones = [];
+    
+    if (Number(pendiente) > 0.5) {
+      recomendaciones.push("• Considerar ampliar la capacidad de atención para el incremento proyectado");
+      recomendaciones.push("• Revisar y optimizar los procesos de admisión para manejar mayor volumen");
+    } else if (Number(pendiente) < -0.5) {
+      recomendaciones.push("• Investigar las causas de la disminución en admisiones");
+      recomendaciones.push("• Evaluar estrategias de promoción de servicios de salud ocupacional");
     }
     
-    // Proyección
-    if (pendiente !== 0 && meses.length >= 3) {
-      const proyeccionSiguienteMes = promedio + pendiente;
-      doc.text(`• Proyección siguiente mes: ${Math.max(0, Math.round(proyeccionSiguienteMes))} admisiones (basado en tendencia)`);
+    if (Number(coeficienteVariacion) > 35) {
+      recomendaciones.push("• Implementar un sistema de gestión flexible de recursos humanos");
+      recomendaciones.push("• Establecer protocolos para picos y valles de demanda");
     }
-  } catch (error: any) {
+    
+    if (ultimoValor > promedio * 1.2) {
+      recomendaciones.push("• Monitorear de cerca el incremento reciente y sus causas");
+      recomendaciones.push("• Asegurar disponibilidad de personal y materiales adicionales");
+    }
+    
+    if (recomendaciones.length === 0) {
+      recomendaciones.push("• Mantener el nivel actual de recursos y servicios");
+      recomendaciones.push("• Continuar monitoreando las métricas periódicamente");
+    }
+    
+    recomendaciones.forEach(rec => {
+      doc.text(rec, 70, doc.y, { width: 465, align: "left" });
+      doc.moveDown(0.4);
+    });
+    
+    doc.fillColor("#000000").font("Helvetica");
+    
+  } catch (error) {
     console.error("Error en generateAdmissionsPDF:", error);
-    try {
-      doc.fontSize(12).text("Error al generar el reporte de admisiones.", { align: "center" });
-    } catch (e) {
-      // Si el doc ya está cerrado, no hacer nada
-    }
+    doc.fontSize(12).text("Error al generar el reporte.", { align: "center" });
   }
 }
 

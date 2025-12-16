@@ -1,9 +1,8 @@
 import express, { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../utils/database";
 import multer from "multer";
 
 const router = express.Router();
-const prisma = new PrismaClient();
 const upload = multer({ dest: "uploads/" });
 
 // GET /api/laboratory/samples - Listar muestras

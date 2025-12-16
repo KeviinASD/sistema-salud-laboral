@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
@@ -17,6 +17,20 @@ import {
   Filler
 } from "chart.js";
 import { Line, Bar, Doughnut } from "react-chartjs-2";
+import useEmblaCarousel from "embla-carousel-react";
+import { 
+  Users, 
+  ClipboardList, 
+  FileText, 
+  DollarSign, 
+  AlertCircle,
+  Calendar,
+  CheckCircle,
+  TrendingUp,
+  ChevronLeft,
+  ChevronRight,
+  BarChart3
+} from "lucide-react";
 
 ChartJS.register(
   CategoryScale,
@@ -194,246 +208,258 @@ export default function Dashboard() {
   };
 
   const tabs = [
-    { id: "resumen", label: "Resumen", icon: "📊" },
-    { id: "graficos", label: "Gráficos", icon: "📈" }
+    { id: "resumen", label: "Resumen", icon: TrendingUp },
+    { id: "graficos", label: "Gráficos", icon: BarChart3 }
   ];
+
+  // Embla Carousel
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true, align: 'start' });
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [scrollSnaps, setScrollSnaps] = useState<number[]>([]);
+
+  const scrollPrev = useCallback(() => emblaApi && emblaApi.scrollPrev(), [emblaApi]);
+  const scrollNext = useCallback(() => emblaApi && emblaApi.scrollNext(), [emblaApi]);
+
+  const onSelect = useCallback(() => {
+    if (!emblaApi) return;
+    setSelectedIndex(emblaApi.selectedScrollSnap());
+  }, [emblaApi]);
+
+  useEffect(() => {
+    if (!emblaApi) return;
+    onSelect();
+    setScrollSnaps(emblaApi.scrollSnapList());
+    emblaApi.on("select", onSelect);
+    return () => {
+      emblaApi.off("select", onSelect);
+    };
+  }, [emblaApi, onSelect]);
 
   return (
     <AppLayout>
-      <div className="py-4 sm:py-6 lg:py-8">
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 xl:px-8">
-          {/* Header */}
-          <div className="mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white">
-              {t("dashboard.title")}
-            </h1>
-            <p className="mt-1 sm:mt-2 text-sm sm:text-base lg:text-lg text-gray-600 dark:text-gray-400">
-              {t("dashboard.subtitle")}
-            </p>
+      <div className="py-4 sm:py-6">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6">
+          {/* Header Mejorado */}
+          <div className="mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+                  {t("dashboard.title")}
+                </h1>
+                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                  {t("dashboard.subtitle")}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={loadDashboardData}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  Actualizar
+                </button>
+              </div>
+            </div>
           </div>
 
-          {/* Pestañas */}
-          <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
-            <nav className="-mb-px flex space-x-4 sm:space-x-8" aria-label="Tabs">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`
-                    whitespace-nowrap py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-sm sm:text-base flex items-center gap-2
-                    ${
-                      activeTab === tab.id
-                        ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
-                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300"
-                    }
-                  `}
-                >
-                  <span>{tab.icon}</span>
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
+          {/* Pestañas Modernas */}
+          <div className="mb-6">
+            <div className="bg-gray-100 dark:bg-gray-800 p-1 rounded-lg inline-flex gap-1">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`
+                      inline-flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-all
+                      ${
+                        activeTab === tab.id
+                          ? "bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm"
+                          : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
+                      }
+                    `}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Contenido */}
           {loading ? (
-            <div className="text-center py-12 sm:py-16 lg:py-20">
-              <div className="animate-spin rounded-full h-12 w-12 sm:h-16 sm:w-16 border-b-2 border-indigo-600 dark:border-indigo-400 mx-auto"></div>
+            <div className="text-center py-20">
+              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 dark:border-blue-400 mx-auto"></div>
               <p className="mt-4 text-gray-600 dark:text-gray-400">{t("common.loading")}</p>
             </div>
           ) : (
             <>
-              {/* Pestaña: Resumen */}
+              {/* Pestaña: Resumen Rediseñado */}
               {activeTab === "resumen" && stats && (
-                <div className="space-y-4 sm:space-y-6">
-                  {/* Cards principales - Grid responsivo mejorado */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-                    {/* Pacientes */}
-                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl shadow-lg p-4 sm:p-6 border border-blue-200 dark:border-blue-800 hover:shadow-xl transition-shadow">
-                      <div className="flex items-center justify-between">
+                <div className="space-y-6">
+                  {/* Stats Cards Grid - Diseño mejorado */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Card Pacientes */}
+                    <div className="group bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200">
+                      <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <p className="text-xs sm:text-sm font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide">
-                            {t("dashboard.patients")}
-                          </p>
-                          <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mt-2">
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                              <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                              Pacientes
+                            </span>
+                          </div>
+                          <p className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
                             {stats.totalPacientes}
                           </p>
                           {stats.pacientesNuevosMes !== undefined && (
-                            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+                            <p className="text-sm text-green-600 dark:text-green-400 font-medium">
                               +{stats.pacientesNuevosMes} este mes
                             </p>
                           )}
                         </div>
-                        <div className="flex-shrink-0 bg-blue-500 rounded-lg p-3 sm:p-4">
-                          <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                          </svg>
-                        </div>
                       </div>
                     </div>
 
-                    {/* Admisiones */}
-                    <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl shadow-lg p-4 sm:p-6 border border-green-200 dark:border-green-800 hover:shadow-xl transition-shadow">
-                      <div className="flex items-center justify-between">
+                    {/* Card Admisiones */}
+                    <div className="group bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200">
+                      <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <p className="text-xs sm:text-sm font-medium text-green-600 dark:text-green-400 uppercase tracking-wide">
-                            {t("dashboard.admissions")}
-                          </p>
-                          <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mt-2">
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                              <ClipboardList className="h-5 w-5 text-green-600 dark:text-green-400" />
+                            </div>
+                            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                              Admisiones
+                            </span>
+                          </div>
+                          <p className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
                             {stats.totalAdmisiones}
                           </p>
-                          <div className="mt-2 space-y-1">
-                            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                              Este mes: <span className="font-semibold">{stats.admisionesMes}</span>
-                            </p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            <span className="font-medium">{stats.admisionesMes}</span> este mes
                             {stats.admisionesHoy !== undefined && (
-                              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                                Hoy: <span className="font-semibold">{stats.admisionesHoy}</span>
-                              </p>
+                              <> • <span className="font-medium">{stats.admisionesHoy}</span> hoy</>
                             )}
-                          </div>
-                        </div>
-                        <div className="flex-shrink-0 bg-green-500 rounded-lg p-3 sm:p-4">
-                          <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                          </svg>
+                          </p>
                         </div>
                       </div>
                     </div>
 
-                    {/* Conceptos */}
-                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl shadow-lg p-4 sm:p-6 border border-purple-200 dark:border-purple-800 hover:shadow-xl transition-shadow">
-                      <div className="flex items-center justify-between">
+                    {/* Card Conceptos */}
+                    <div className="group bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200">
+                      <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <p className="text-xs sm:text-sm font-medium text-purple-600 dark:text-purple-400 uppercase tracking-wide">
-                            {t("dashboard.concepts")}
-                          </p>
-                          <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mt-2">
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                              <FileText className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                            </div>
+                            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                              Conceptos
+                            </span>
+                          </div>
+                          <p className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
                             {stats.conceptosEmitidos}
                           </p>
-                          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            Este mes
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Emitidos este mes
                           </p>
-                        </div>
-                        <div className="flex-shrink-0 bg-purple-500 rounded-lg p-3 sm:p-4">
-                          <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
                         </div>
                       </div>
                     </div>
 
-                    {/* Ingresos */}
-                    <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 rounded-xl shadow-lg p-4 sm:p-6 border border-yellow-200 dark:border-yellow-800 hover:shadow-xl transition-shadow">
-                      <div className="flex items-center justify-between">
+                    {/* Card Ingresos */}
+                    <div className="group bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200">
+                      <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <p className="text-xs sm:text-sm font-medium text-yellow-600 dark:text-yellow-400 uppercase tracking-wide">
-                            {t("dashboard.income")}
-                          </p>
-                          <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mt-2">
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
+                              <DollarSign className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                            </div>
+                            <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                              Ingresos
+                            </span>
+                          </div>
+                          <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
                             {formatCurrency(Number(stats.ingresosMes))}
                           </p>
-                          <div className="mt-2 space-y-1">
-                            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                              Facturas: <span className="font-semibold">{stats.facturasMes}</span>
-                            </p>
-                            {stats.ingresosAnio !== undefined && (
-                              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                                Año: <span className="font-semibold">{formatCurrency(Number(stats.ingresosAnio))}</span>
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex-shrink-0 bg-yellow-500 rounded-lg p-3 sm:p-4">
-                          <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            <span className="font-medium">{stats.facturasMes}</span> facturas
+                          </p>
                         </div>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Exámenes Pendientes */}
-                    <div className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 rounded-xl shadow-lg p-4 sm:p-6 border border-red-200 dark:border-red-800 hover:shadow-xl transition-shadow">
-                      <div className="flex items-center justify-between">
+                  {/* Segunda fila de stats */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Card Exámenes Pendientes */}
+                    <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200">
+                      <div className="flex items-center gap-3">
+                        <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                          <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
+                        </div>
                         <div className="flex-1">
-                          <p className="text-xs sm:text-sm font-medium text-red-600 dark:text-red-400 uppercase tracking-wide">
-                            {t("dashboard.pendingExams")}
-                          </p>
-                          <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mt-2">
-                            {stats.examenesPendientes}
-                          </p>
-                          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
-                            Requieren atención
-                          </p>
-                        </div>
-                        <div className="flex-shrink-0 bg-red-500 rounded-lg p-3 sm:p-4">
-                          <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Exámenes Pendientes</p>
+                          <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.examenesPendientes}</p>
                         </div>
                       </div>
                     </div>
 
-                    {/* Estadísticas de Admisiones */}
+                    {/* Card Programadas */}
                     {stats.admisionesProgramadas !== undefined && (
-                      <>
-                        <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20 rounded-xl shadow-lg p-4 sm:p-6 border border-indigo-200 dark:border-indigo-800 hover:shadow-xl transition-shadow">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <p className="text-xs sm:text-sm font-medium text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">
-                                Programadas
-                              </p>
-                              <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mt-2">
-                                {stats.admisionesProgramadas}
-                              </p>
-                            </div>
-                            <div className="flex-shrink-0 bg-indigo-500 rounded-lg p-3 sm:p-4">
-                              <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
-                            </div>
+                      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200">
+                        <div className="flex items-center gap-3">
+                          <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                            <Calendar className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Programadas</p>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.admisionesProgramadas}</p>
                           </div>
                         </div>
+                      </div>
+                    )}
 
-                        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20 rounded-xl shadow-lg p-4 sm:p-6 border border-emerald-200 dark:border-emerald-800 hover:shadow-xl transition-shadow">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <p className="text-xs sm:text-sm font-medium text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
-                                Completadas
-                              </p>
-                              <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white mt-2">
-                                {stats.admisionesCompletadas}
-                              </p>
-                            </div>
-                            <div className="flex-shrink-0 bg-emerald-500 rounded-lg p-3 sm:p-4">
-                              <svg className="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                            </div>
+                    {/* Card Completadas */}
+                    {stats.admisionesCompletadas !== undefined && (
+                      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all duration-200">
+                        <div className="flex items-center gap-3">
+                          <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
+                            <CheckCircle className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Completadas</p>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.admisionesCompletadas}</p>
                           </div>
                         </div>
-                      </>
+                      </div>
                     )}
                   </div>
 
-                  {/* Sección de información detallada - Grid responsivo */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                  {/* Sección de información detallada - Layout mejorado */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* Admisiones Recientes */}
-                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-                      <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+                      <div className="p-5 border-b border-gray-200 dark:border-gray-700">
                         <div className="flex items-center justify-between">
-                          <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                            <ClipboardList className="h-5 w-5 text-blue-600" />
                             Admisiones Recientes
                           </h3>
                           <button
                             onClick={() => navigate("/admisiones")}
-                            className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium"
+                            className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium hover:underline"
                           >
-                            Ver todas →
+                            Ver todas
                           </button>
                         </div>
                       </div>
-                      <div className="p-4 sm:p-6">
+                      <div className="p-5">
                         {recentAdmissions.length > 0 ? (
                           <div className="space-y-3">
                             {recentAdmissions.map((adm) => (
@@ -446,44 +472,44 @@ export default function Dashboard() {
                                   <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                                     {adm.paciente.usuario.nombres} {adm.paciente.usuario.apellidos}
                                   </p>
-                                  <div className="mt-1 flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
+                                  <div className="mt-1 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                                     <span>DNI: {adm.paciente.usuario.dni}</span>
                                     <span>•</span>
                                     <span>{formatDate(adm.fecha_programada)}</span>
                                   </div>
                                 </div>
-                                <div className="ml-4 flex-shrink-0">
-                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(adm.estado)}`}>
-                                    {adm.estado}
-                                  </span>
-                                </div>
+                                <span className={`ml-3 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(adm.estado)}`}>
+                                  {adm.estado}
+                                </span>
                               </div>
                             ))}
                           </div>
                         ) : (
-                          <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
-                            No hay admisiones recientes
-                          </p>
+                          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                            <ClipboardList className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">No hay admisiones recientes</p>
+                          </div>
                         )}
                       </div>
                     </div>
 
                     {/* Próximas Citas */}
-                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-                      <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+                      <div className="p-5 border-b border-gray-200 dark:border-gray-700">
                         <div className="flex items-center justify-between">
-                          <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                            <Calendar className="h-5 w-5 text-green-600" />
                             Próximas Citas
                           </h3>
                           <button
                             onClick={() => navigate("/admisiones/calendario")}
-                            className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 font-medium"
+                            className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium hover:underline"
                           >
-                            Ver calendario →
+                            Ver calendario
                           </button>
                         </div>
                       </div>
-                      <div className="p-4 sm:p-6">
+                      <div className="p-5">
                         {upcomingAppointments.length > 0 ? (
                           <div className="space-y-3">
                             {upcomingAppointments.map((adm) => (
@@ -496,24 +522,23 @@ export default function Dashboard() {
                                   <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                                     {adm.paciente.usuario.nombres} {adm.paciente.usuario.apellidos}
                                   </p>
-                                  <div className="mt-1 flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
+                                  <div className="mt-1 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                                     <span>{adm.tipo_examen}</span>
                                     <span>•</span>
                                     <span>{formatDate(adm.fecha_programada)}</span>
                                   </div>
                                 </div>
-                                <div className="ml-4 flex-shrink-0">
-                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(adm.estado)}`}>
-                                    {adm.estado}
-                                  </span>
-                                </div>
+                                <span className={`ml-3 inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(adm.estado)}`}>
+                                  {adm.estado}
+                                </span>
                               </div>
                             ))}
                           </div>
                         ) : (
-                          <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
-                            No hay citas programadas
-                          </p>
+                          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                            <Calendar className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">No hay citas programadas</p>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -521,194 +546,309 @@ export default function Dashboard() {
                 </div>
               )}
 
-              {/* Pestaña: Gráficos */}
+              {/* Pestaña: Gráficos con Carrusel */}
               {activeTab === "graficos" && chartData && (
-                <div className="space-y-4 sm:space-y-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                    {/* Gráfico de Admisiones Mensuales */}
-                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                        Admisiones Mensuales
-                      </h3>
-                      <div className="h-64 sm:h-80">
-                        <Line
-                          data={{
-                            labels: chartData.admisionesMensuales.map((d) => d.mes),
-                            datasets: [
-                              {
-                                label: "Admisiones",
-                                data: chartData.admisionesMensuales.map((d) => d.cantidad),
-                                borderColor: "rgb(59, 130, 246)",
-                                backgroundColor: "rgba(59, 130, 246, 0.1)",
-                                fill: true,
-                                tension: 0.4
-                              }
-                            ]
-                          }}
-                          options={chartOptions}
-                        />
-                      </div>
-                    </div>
+                <div className="space-y-6">
+                  {/* Carrusel de Gráficos */}
+                  <div className="relative">
+                    <div className="overflow-hidden rounded-xl" ref={emblaRef}>
+                      <div className="flex">
+                        {/* Slide 1: Exámenes por Estado */}
+                        <div className="flex-[0_0_100%] min-w-0 px-2">
+                          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+                            <div className="flex items-center gap-2 mb-4">
+                              <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                                <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                              </div>
+                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                Exámenes de Laboratorio por Estado
+                              </h3>
+                            </div>
+                            <div className="h-80">
+                              <Bar
+                                data={{
+                                  labels: chartData.examenesPorEstado.map((d) => d.estado),
+                                  datasets: [
+                                    {
+                                      label: "Cantidad",
+                                      data: chartData.examenesPorEstado.map((d) => d.cantidad),
+                                      backgroundColor: [
+                                        "rgba(239, 68, 68, 0.8)",
+                                        "rgba(34, 197, 94, 0.8)",
+                                        "rgba(251, 191, 36, 0.8)"
+                                      ]
+                                    }
+                                  ]
+                                }}
+                                options={chartOptions}
+                              />
+                            </div>
+                          </div>
+                        </div>
 
-                    {/* Gráfico de Ingresos Mensuales */}
-                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                        Ingresos Mensuales
-                      </h3>
-                      <div className="h-64 sm:h-80">
-                        <Line
-                          data={{
-                            labels: chartData.ingresosMensuales.map((d) => d.mes),
-                            datasets: [
-                              {
-                                label: "Ingresos (S/)",
-                                data: chartData.ingresosMensuales.map((d) => d.monto),
-                                borderColor: "rgb(34, 197, 94)",
-                                backgroundColor: "rgba(34, 197, 94, 0.1)",
-                                fill: true,
-                                tension: 0.4
-                              }
-                            ]
-                          }}
-                          options={{
-                            ...chartOptions,
-                            scales: {
-                              y: {
-                                beginAtZero: true,
-                                ticks: {
-                                  callback: function(value: any) {
-                                    return `S/ ${value.toLocaleString("es-PE")}`;
+                        {/* Slide 2: Admisiones Mensuales */}
+                        <div className="flex-[0_0_100%] min-w-0 px-2">
+                          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+                            <div className="flex items-center gap-2 mb-4">
+                              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                                <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                              </div>
+                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                Admisiones Mensuales
+                              </h3>
+                            </div>
+                            <div className="h-80">
+                              <Line
+                                data={{
+                                  labels: chartData.admisionesMensuales.map((d) => d.mes),
+                                  datasets: [
+                                    {
+                                      label: "Admisiones",
+                                      data: chartData.admisionesMensuales.map((d) => d.cantidad),
+                                      borderColor: "rgb(59, 130, 246)",
+                                      backgroundColor: "rgba(59, 130, 246, 0.1)",
+                                      fill: true,
+                                      tension: 0.4
+                                    }
+                                  ]
+                                }}
+                                options={chartOptions}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Slide 3: Ingresos Mensuales */}
+                        <div className="flex-[0_0_100%] min-w-0 px-2">
+                          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+                            <div className="flex items-center gap-2 mb-4">
+                              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                                <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
+                              </div>
+                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                Ingresos Mensuales
+                              </h3>
+                            </div>
+                            <div className="h-80">
+                              <Line
+                                data={{
+                                  labels: chartData.ingresosMensuales.map((d) => d.mes),
+                                  datasets: [
+                                    {
+                                      label: "Ingresos (S/)",
+                                      data: chartData.ingresosMensuales.map((d) => d.monto),
+                                      borderColor: "rgb(34, 197, 94)",
+                                      backgroundColor: "rgba(34, 197, 94, 0.1)",
+                                      fill: true,
+                                      tension: 0.4
+                                    }
+                                  ]
+                                }}
+                                options={{
+                                  ...chartOptions,
+                                  scales: {
+                                    y: {
+                                      beginAtZero: true,
+                                      ticks: {
+                                        callback: function(value: any) {
+                                          return `S/ ${value.toLocaleString("es-PE")}`;
+                                        }
+                                      }
+                                    }
                                   }
-                                }
-                              }
-                            }
-                          }}
-                        />
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Slide 4: Pacientes por Empresa */}
+                        <div className="flex-[0_0_100%] min-w-0 px-2">
+                          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+                            <div className="flex items-center gap-2 mb-4">
+                              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                                <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                              </div>
+                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                Top 5 Empresas por Pacientes
+                              </h3>
+                            </div>
+                            <div className="h-80">
+                              <Bar
+                                data={{
+                                  labels: chartData.pacientesPorEmpresa.map((d) =>
+                                    d.empresa.length > 15 ? d.empresa.substring(0, 15) + "..." : d.empresa
+                                  ),
+                                  datasets: [
+                                    {
+                                      label: "Pacientes",
+                                      data: chartData.pacientesPorEmpresa.map((d) => d.cantidad),
+                                      backgroundColor: [
+                                        "rgba(59, 130, 246, 0.8)",
+                                        "rgba(34, 197, 94, 0.8)",
+                                        "rgba(251, 191, 36, 0.8)",
+                                        "rgba(239, 68, 68, 0.8)",
+                                        "rgba(168, 85, 247, 0.8)"
+                                      ]
+                                    }
+                                  ]
+                                }}
+                                options={chartOptions}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Slide 5: Conceptos por Resultado */}
+                        <div className="flex-[0_0_100%] min-w-0 px-2">
+                          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+                            <div className="flex items-center gap-2 mb-4">
+                              <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
+                                <FileText className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                              </div>
+                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                Conceptos de Aptitud por Resultado
+                              </h3>
+                            </div>
+                            <div className="h-80 flex items-center justify-center">
+                              <div className="w-full max-w-md">
+                                <Doughnut
+                                  data={{
+                                    labels: chartData.conceptosPorResultado.map((d) => d.resultado),
+                                    datasets: [
+                                      {
+                                        data: chartData.conceptosPorResultado.map((d) => d.cantidad),
+                                        backgroundColor: [
+                                          "rgba(34, 197, 94, 0.8)",
+                                          "rgba(251, 191, 36, 0.8)",
+                                          "rgba(239, 68, 68, 0.8)",
+                                          "rgba(59, 130, 246, 0.8)",
+                                          "rgba(168, 85, 247, 0.8)"
+                                        ]
+                                      }
+                                    ]
+                                  }}
+                                  options={chartOptions}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Slide 5: Exámenes por Estado */}
+                        <div className="flex-[0_0_100%] min-w-0 px-2">
+                          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+                            <div className="flex items-center gap-2 mb-4">
+                              <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                                <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                              </div>
+                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                Exámenes de Laboratorio por Estado
+                              </h3>
+                            </div>
+                            <div className="h-80">
+                              <Bar
+                                data={{
+                                  labels: chartData.examenesPorEstado.map((d) => d.estado),
+                                  datasets: [
+                                    {
+                                      label: "Cantidad",
+                                      data: chartData.examenesPorEstado.map((d) => d.cantidad),
+                                      backgroundColor: [
+                                        "rgba(239, 68, 68, 0.8)",
+                                        "rgba(34, 197, 94, 0.8)",
+                                        "rgba(251, 191, 36, 0.8)"
+                                      ]
+                                    }
+                                  ]
+                                }}
+                                options={chartOptions}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Slide 6: Tendencias */}
+                        <div className="flex-[0_0_100%] min-w-0 px-2">
+                          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-gray-200 dark:border-gray-700">
+                            <div className="flex items-center gap-2 mb-4">
+                              <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                                <BarChart3 className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                              </div>
+                              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                Tendencias: Admisiones vs Conceptos
+                              </h3>
+                            </div>
+                            <div className="h-80">
+                              <Line
+                                data={{
+                                  labels: chartData.admisionesMensuales.map((d) => d.mes),
+                                  datasets: [
+                                    {
+                                      label: "Admisiones",
+                                      data: chartData.admisionesMensuales.map((d) => d.cantidad),
+                                      borderColor: "rgb(59, 130, 246)",
+                                      backgroundColor: "rgba(59, 130, 246, 0.1)",
+                                      fill: false,
+                                      tension: 0.4
+                                    },
+                                    {
+                                      label: "Conceptos Emitidos",
+                                      data: chartData.conceptosMensuales.map((d) => d.cantidad),
+                                      borderColor: "rgb(168, 85, 247)",
+                                      backgroundColor: "rgba(168, 85, 247, 0.1)",
+                                      fill: false,
+                                      tension: 0.4
+                                    }
+                                  ]
+                                }}
+                                options={chartOptions}
+                              />
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Gráfico de Pacientes por Empresa */}
-                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                        Top 5 Empresas por Pacientes
-                      </h3>
-                      <div className="h-64 sm:h-80">
-                        <Bar
-                          data={{
-                            labels: chartData.pacientesPorEmpresa.map((d) =>
-                              d.empresa.length > 15 ? d.empresa.substring(0, 15) + "..." : d.empresa
-                            ),
-                            datasets: [
-                              {
-                                label: "Pacientes",
-                                data: chartData.pacientesPorEmpresa.map((d) => d.cantidad),
-                                backgroundColor: [
-                                  "rgba(59, 130, 246, 0.8)",
-                                  "rgba(34, 197, 94, 0.8)",
-                                  "rgba(251, 191, 36, 0.8)",
-                                  "rgba(239, 68, 68, 0.8)",
-                                  "rgba(168, 85, 247, 0.8)"
-                                ]
-                              }
-                            ]
-                          }}
-                          options={chartOptions}
-                        />
-                      </div>
-                    </div>
+                    {/* Botones de navegación del carrusel */}
+                    <button
+                      onClick={scrollPrev}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 p-3 rounded-full shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors z-10"
+                      aria-label="Anterior"
+                    >
+                      <ChevronLeft className="h-6 w-6 text-gray-700 dark:text-gray-300" />
+                    </button>
+                    <button
+                      onClick={scrollNext}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 p-3 rounded-full shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors z-10"
+                      aria-label="Siguiente"
+                    >
+                      <ChevronRight className="h-6 w-6 text-gray-700 dark:text-gray-300" />
+                    </button>
+                  </div>
 
-                    {/* Gráfico de Conceptos por Resultado */}
-                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                        Conceptos de Aptitud por Resultado
-                      </h3>
-                      <div className="h-64 sm:h-80">
-                        <Doughnut
-                          data={{
-                            labels: chartData.conceptosPorResultado.map((d) => d.resultado),
-                            datasets: [
-                              {
-                                data: chartData.conceptosPorResultado.map((d) => d.cantidad),
-                                backgroundColor: [
-                                  "rgba(34, 197, 94, 0.8)",
-                                  "rgba(251, 191, 36, 0.8)",
-                                  "rgba(239, 68, 68, 0.8)",
-                                  "rgba(59, 130, 246, 0.8)",
-                                  "rgba(168, 85, 247, 0.8)"
-                                ]
-                              }
-                            ]
-                          }}
-                          options={chartOptions}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Gráfico de Exámenes por Estado */}
-                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                        Exámenes de Laboratorio por Estado
-                      </h3>
-                      <div className="h-64 sm:h-80">
-                        <Bar
-                          data={{
-                            labels: chartData.examenesPorEstado.map((d) => d.estado),
-                            datasets: [
-                              {
-                                label: "Cantidad",
-                                data: chartData.examenesPorEstado.map((d) => d.cantidad),
-                                backgroundColor: [
-                                  "rgba(239, 68, 68, 0.8)",
-                                  "rgba(34, 197, 94, 0.8)",
-                                  "rgba(251, 191, 36, 0.8)"
-                                ]
-                              }
-                            ]
-                          }}
-                          options={chartOptions}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Gráfico de Tendencias */}
-                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 sm:p-6 border border-gray-200 dark:border-gray-700">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                        Tendencias: Admisiones vs Conceptos
-                      </h3>
-                      <div className="h-64 sm:h-80">
-                        <Line
-                          data={{
-                            labels: chartData.admisionesMensuales.map((d) => d.mes),
-                            datasets: [
-                              {
-                                label: "Admisiones",
-                                data: chartData.admisionesMensuales.map((d) => d.cantidad),
-                                borderColor: "rgb(59, 130, 246)",
-                                backgroundColor: "rgba(59, 130, 246, 0.1)",
-                                fill: false,
-                                tension: 0.4
-                              },
-                              {
-                                label: "Conceptos Emitidos",
-                                data: chartData.conceptosMensuales.map((d) => d.cantidad),
-                                borderColor: "rgb(168, 85, 247)",
-                                backgroundColor: "rgba(168, 85, 247, 0.1)",
-                                fill: false,
-                                tension: 0.4
-                              }
-                            ]
-                          }}
-                          options={chartOptions}
-                        />
-                      </div>
-                    </div>
+                  {/* Indicadores del carrusel */}
+                  <div className="flex justify-center gap-2">
+                    {scrollSnaps.map((_, index) => (
+                      <button
+                        key={index}
+                        onClick={() => emblaApi && emblaApi.scrollTo(index)}
+                        className={`h-2 rounded-full transition-all ${
+                          index === selectedIndex
+                            ? "w-8 bg-blue-600 dark:bg-blue-400"
+                            : "w-2 bg-gray-300 dark:bg-gray-600"
+                        }`}
+                        aria-label={`Ir al gráfico ${index + 1}`}
+                      />
+                    ))}
                   </div>
                 </div>
               )}
 
               {activeTab === "graficos" && !chartData && !loading && (
-                <div className="text-center py-12 sm:py-16 text-gray-600 dark:text-gray-400 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-                  <p className="text-lg">No hay datos de gráficos disponibles</p>
+                <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+                  <BarChart3 className="h-16 w-16 mx-auto mb-4 text-gray-400" />
+                  <p className="text-lg text-gray-600 dark:text-gray-400">No hay datos de gráficos disponibles</p>
                 </div>
               )}
             </>

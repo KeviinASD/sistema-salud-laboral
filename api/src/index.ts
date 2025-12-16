@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import multer from "multer";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "./utils/database";
 import crypto from "crypto";
 import { sendEmail } from "./services/mailer";
 import { sendSms } from "./services/sms";
@@ -30,8 +30,6 @@ app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use("/uploads", express.static("uploads"));
-
-const prisma = new PrismaClient();
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
 
@@ -645,8 +643,23 @@ app.post("/api/biometric/verify", authMiddleware, async (req: Request, res: Resp
 });
 
 const PORT = process.env.API_PORT ? parseInt(process.env.API_PORT) : 4001;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`API escuchando en http://localhost:${PORT}`);
+});
+
+// Manejo de cierre graceful
+process.on('SIGTERM', () => {
+  console.log('SIGTERM recibido, cerrando servidor...');
+  server.close(() => {
+    console.log('Servidor HTTP cerrado');
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT recibido, cerrando servidor...');
+  server.close(() => {
+    console.log('Servidor HTTP cerrado');
+  });
 });
 app.get("/api/clinic/config", authMiddleware, requireRole(["ADMIN"]), async (req: Request, res: Response) => {
   const rows = await prisma.clinicConfig.findMany();

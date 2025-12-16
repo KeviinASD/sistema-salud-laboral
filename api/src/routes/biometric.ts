@@ -1,9 +1,8 @@
 import express, { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../utils/database";
 import { enrollBiometric, verifyBiometric } from "../services/biometric";
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // POST /api/biometric/register - Registro biométrico
 router.post("/register", async (req: Request, res: Response) => {

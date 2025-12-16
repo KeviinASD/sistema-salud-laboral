@@ -1,8 +1,7 @@
 import express, { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../utils/database";
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // GET /api/inventario/items - Listar items de inventario
 router.get("/items", async (req: Request, res: Response) => {

@@ -2,8 +2,9 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import Avatar from "react-avatar";
-import ThemeToggle from "../ThemeToggle";
-import LanguageSelector from "../LanguageSelector";
+import { LogOut, User } from "lucide-react";
+// import ThemeToggle from "../ThemeToggle";
+// import LanguageSelector from "../LanguageSelector";
 
 interface AppHeaderProps {
   user?: {
@@ -52,50 +53,79 @@ export default function AppHeader({ user, onMenuClick }: AppHeaderProps) {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
-        <div className="flex justify-between items-center h-14 sm:h-16">
-          <div className="flex items-center space-x-3">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-800 dark:to-blue-900 shadow-lg">
+      <div className="px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          {/* Logo y título */}
+          <div className="flex items-center gap-4">
             {/* Botón menú móvil */}
             <button
               onClick={onMenuClick}
-              className="lg:hidden p-2 rounded-md text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="lg:hidden p-2 rounded-lg text-white/90 hover:text-white hover:bg-white/10 transition-colors"
               aria-label="Toggle menu"
             >
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white truncate">Sistema de Salud Laboral</h1>
+            
+            {/* Logo/Icono */}
+            <div className="hidden sm:flex items-center justify-center w-10 h-10 bg-white/10 rounded-lg backdrop-blur-sm">
+              <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+
+            {/* Título */}
+            <div>
+              <h1 className="text-base sm:text-lg font-bold text-white uppercase tracking-wide">
+                Sistema de Salud Laboral
+              </h1>
+              <p className="hidden md:block text-xs text-blue-100">Gestión Integral</p>
+            </div>
           </div>
-          <div className="flex items-center space-x-2 sm:space-x-4">
+
+          {/* Acciones del usuario */}
+          <div className="flex items-center gap-2 sm:gap-3">
             {user && (
               <>
-                <LanguageSelector />
-                <ThemeToggle />
+                {/* Selector de idioma - Comentado */}
+                {/* <LanguageSelector /> */}
+                
+                {/* Toggle de tema - Comentado */}
+                {/* <ThemeToggle /> */}
+
+                {/* Perfil del usuario */}
                 <button
                   onClick={() => navigate("/perfil")}
-                  className="flex items-center space-x-2 p-1.5 sm:p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                  className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors backdrop-blur-sm"
                   title={t("nav.profile")}
                 >
+                  <div className="hidden md:block text-right">
+                    <p className="text-sm font-semibold text-white truncate max-w-40">
+                      {getUserName()}
+                    </p>
+                    <p className="text-xs text-blue-100">
+                      {getRoleLabel(getUserRole())}
+                    </p>
+                  </div>
                   <Avatar
                     name={getUserName()}
-                    size="36"
+                    size="40"
                     round={true}
-                    className="flex-shrink-0"
-                    color="#4F46E5"
+                    className="flex-shrink-0 ring-2 ring-white/20"
+                    color="#3B82F6"
                   />
-                  <div className="hidden sm:block text-right">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate max-w-32 lg:max-w-none">{getUserName()}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{getRoleLabel(getUserRole())}</p>
-                  </div>
                 </button>
+
+                {/* Botón cerrar sesión */}
                 <button
                   onClick={handleLogout}
-                  className="bg-red-600 text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-md text-xs sm:text-sm font-medium hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                  className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-white/10 hover:bg-red-600 text-white font-medium transition-colors backdrop-blur-sm"
+                  title={t("common.logout")}
                 >
-                  <span className="hidden sm:inline">{t("common.logout")}</span>
-                  <span className="sm:hidden">🚪</span>
+                  <LogOut className="h-4 w-4" />
+                  <span className="hidden sm:inline text-sm">{t("common.logout")}</span>
                 </button>
               </>
             )}

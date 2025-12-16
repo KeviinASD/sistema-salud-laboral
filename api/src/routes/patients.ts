@@ -1,10 +1,9 @@
 import express, { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../utils/database";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // GET /api/patients/search - Búsqueda de pacientes
 router.get("/search", async (req: Request, res: Response) => {

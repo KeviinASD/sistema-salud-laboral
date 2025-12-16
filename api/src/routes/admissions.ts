@@ -1,11 +1,10 @@
 import express, { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../utils/database";
 import crypto from "crypto";
 import multer from "multer";
 import fs from "fs";
 
 const router = express.Router();
-const prisma = new PrismaClient();
 const upload = multer({ dest: "uploads/" });
 
 // Middleware de autenticación (se importará desde index.ts)

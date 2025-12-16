@@ -9,7 +9,7 @@ export default function Admin() {
   const { showSuccess, showError, showConfirm } = useToast();
   const [activeTab, setActiveTab] = useState("usuarios");
   const [users, setUsers] = useState<any[]>([]);
-  const [form, setForm] = useState<any>({ email: "", name: "", password: "", role: "ADMISSIONS" });
+  const [form, setForm] = useState<any>({ email: "", name: "", password: "", dni: "", role: "ADMISSIONS" });
   const [settings, setSettings] = useState<any>({});
   const [settingEdit, setSettingEdit] = useState<any>({ key: "clinic_name", value: "" });
   const [items, setItems] = useState<any[]>([]);
@@ -157,13 +157,13 @@ export default function Admin() {
         apellidos: form.name.split(" ").slice(1).join(" ") || "",
         password: form.password,
         rol: form.role.toLowerCase(),
-        dni: form.email.split("@")[0] || "00000000", // DNI temporal
+        dni: form.dni || "00000000",
         telefono: "",
         activo: true
       };
       const r = await api.post("/users", userData);
       await loadData();
-      setForm({ email: "", name: "", password: "", role: "ADMISSIONS" });
+      setForm({ email: "", name: "", password: "", dni: "", role: "ADMISSIONS" });
       showSuccess("Usuario creado exitosamente");
     } catch (error: any) {
       showError(error.response?.data?.error || "Error al crear usuario");
@@ -397,6 +397,14 @@ export default function Admin() {
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
             required
+          />
+          <input
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            placeholder="DNI"
+            type="text"
+            value={form.dni}
+            onChange={(e) => setForm({ ...form, dni: e.target.value })}
+            maxLength={8}
           />
           <input
             className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"

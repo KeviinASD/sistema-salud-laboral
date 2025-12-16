@@ -1,12 +1,11 @@
 import express, { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../utils/database";
 import crypto from "crypto";
 // @ts-ignore - pdfkit types issue
 import PDFDocument from "pdfkit";
 import { Readable } from "stream";
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // POST /api/concepto-aptitud - Crear concepto de aptitud
 router.post("/", async (req: Request, res: Response) => {
