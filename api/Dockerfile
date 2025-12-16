@@ -1,20 +1,18 @@
-# ========================
-# Etapa 1: Build
-# ========================
+# ===== Etapa 1: Build =====
 FROM node:20-alpine AS builder
 
 RUN apk add --no-cache openssl
 
 WORKDIR /app
 
-# Copiar SOLO lo necesario desde /api
-COPY api/package*.json ./
-COPY api/prisma ./prisma/
+# Copiar dependencias
+COPY package*.json ./
+COPY prisma ./prisma/
 
 RUN npm ci
 
-# Copiar el resto del código de la API
-COPY api .
+# Copiar código fuente
+COPY . .
 
 # Generar Prisma Client
 RUN npx prisma generate
@@ -22,26 +20,22 @@ RUN npx prisma generate
 # Compilar TypeScript
 RUN npm run build
 
-# ========================
-# Etapa 2: Production
-# ========================
+# ===== Etapa 2: Production =====
 FROM node:20-alpine
 
 RUN apk add --no-cache openssl
 
 WORKDIR /app
 
-# Copiar package.json para prod
-COPY api/package*.json ./
+# Copiar dependencias de producción
+COPY package*.json ./
+RUN npm ci --only=production && npm cache clean --force
 
-RUN npm ci --omit=dev && npm cache clean --force
-
-# Copiar build y Prisma desde builder
+# Copiar build y prisma
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
-# Crear carpeta uploads
 RUN mkdir -p uploads && chmod 755 uploads
 
 EXPOSE 3000
