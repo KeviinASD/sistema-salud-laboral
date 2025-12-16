@@ -11,7 +11,7 @@ COPY api/package*.json ./
 COPY api/prisma ./prisma/
 
 # Instalar todas las dependencias (incluyendo devDependencies)
-RUN npm ci
+RUN npm install
 
 # Copiar el código fuente completo desde api/
 COPY api/ ./
@@ -30,11 +30,11 @@ RUN apk add --no-cache openssl
 
 WORKDIR /app
 
-# Copiar package.json y package-lock.json
+# Copiar package.json
 COPY api/package*.json ./
 
 # Instalar solo dependencias de producción
-RUN npm ci --only=production && npm cache clean --force
+RUN npm install --omit=dev && npm cache clean --force
 
 # Copiar archivos compilados desde la etapa builder
 COPY --from=builder /app/dist ./dist
