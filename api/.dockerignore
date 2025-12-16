@@ -1,0 +1,18 @@
+# Archivos y directorios a ignorar en el build de Docker
+node_modules
+npm-debug.log
+.env
+.env.local
+.env.*.local
+dist
+*.log
+.git
+.gitignore
+.vscode
+.idea
+coverage
+.DS_Store
+*.md
+!README.md
+verificar-webhook.ps1
+limpiar-conexiones.cjs
