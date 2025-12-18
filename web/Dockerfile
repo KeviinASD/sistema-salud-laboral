@@ -1,6 +1,10 @@
 # Stage 1: Build
 FROM node:20-alpine AS builder
 
+# Argumentos de build para variables de entorno
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+
 WORKDIR /app
 
 # Copiar package.json y package-lock.json
@@ -19,10 +23,7 @@ COPY web/index.html ./
 # Copiar el código fuente
 COPY web/src ./src
 
-# Copiar archivo .env si existe
-COPY web/.env* ./
-
-# Build de producción
+# Build de producción (usa las variables de entorno del ARG)
 RUN npm run build
 
 # Stage 2: Production
